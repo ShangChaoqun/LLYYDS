@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #FF6B8A;
+  --color-primary-light: #FF8FA8;
+  --color-secondary: #B088F9;
+  --color-bg: #FFF5F7;
+  --color-bg-card: #FFFFFF;
+  --color-text: #2D2D3A;
+  --color-text-secondary: #8E8E9A;
+  --color-border: #F0E8ED;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, #FF6B8A 0%, #B088F9 100%);
+  }
+
+  .gradient-primary-light {
+    background: linear-gradient(135deg, #FFE4EB 0%, #EDE4FF 100%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #FF6B8A 0%, #B088F9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .shadow-soft {
+    box-shadow: 0 2px 12px rgba(255, 107, 138, 0.12);
+  }
+
+  .shadow-card {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  .btn-primary {
+    @apply gradient-primary text-white rounded-full px-6 py-2.5 font-medium shadow-soft active:scale-95 transition-transform;
+  }
+
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/40 z-50 flex items-end justify-center;
+  }
+
+  .modal-content {
+    @apply bg-white rounded-t-3xl w-full max-w-lg p-6 pb-8 animate-slide-up;
+  }
+
+  .page-container {
+    @apply px-4 pb-24 pt-2;
+  }
+
+  .card-base {
+    @apply bg-white rounded-2xl p-4 shadow-card;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+input[type="date"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="file"] {
+  display: none;
+}
