@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useMenuStore, MenuItem } from '@/store/useMenuStore';
 import { compressImage } from '@/utils/helpers';
-import { Plus, ImagePlus, X, Trash2, Eye, Pencil } from 'lucide-react';
+import { Plus, ImagePlus, X, Trash2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 
 export default function Menu() {
   const { menuItems, deleteMenuItem, updateMenuItem } = useMenuStore();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [viewItem, setViewItem] = useState<MenuItem | null>(null);
+  const [viewPhoto, setViewPhoto] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
 
   return (
@@ -36,14 +36,13 @@ export default function Menu() {
               <div key={item.id} className="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in">
                 {item.photo ? (
                   <div className="relative aspect-[4/3]">
-                    <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+                    <img
+                      src={item.photo}
+                      alt={item.name}
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => setViewPhoto(item.photo)}
+                    />
                     <div className="absolute top-2 right-2 flex gap-1">
-                      <button
-                        onClick={() => setViewItem(item)}
-                        className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center"
-                      >
-                        <Eye size={14} className="text-gray-600" />
-                      </button>
                       <button
                         onClick={() => setEditItem(item)}
                         className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center"
@@ -92,25 +91,9 @@ export default function Menu() {
       {showAddModal && <AddMenuModal onClose={() => setShowAddModal(false)} />}
       {editItem && <EditMenuModal item={editItem} onClose={() => setEditItem(null)} />}
 
-      {viewItem && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setViewItem(null)}>
-          <div className="bg-white rounded-3xl overflow-hidden max-w-sm w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>
-            {viewItem.photo && (
-              <img src={viewItem.photo} alt={viewItem.name} className="w-full aspect-[4/3] object-cover" />
-            )}
-            <div className="p-5">
-              <h3 className="text-lg font-bold text-gray-800">{viewItem.name}</h3>
-              {viewItem.description && (
-                <p className="text-sm text-gray-500 mt-2 leading-relaxed">{viewItem.description}</p>
-              )}
-              <button
-                onClick={() => setViewItem(null)}
-                className="btn-primary w-full text-center mt-4"
-              >
-                关闭
-              </button>
-            </div>
-          </div>
+      {viewPhoto && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center" onClick={() => setViewPhoto(null)}>
+          <img src={viewPhoto} alt="" className="max-w-full max-h-[85vh] object-contain" onClick={() => setViewPhoto(null)} />
         </div>
       )}
     </div>

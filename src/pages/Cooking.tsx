@@ -152,17 +152,15 @@ function PhotoViewer({
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full h-full flex items-center justify-center">
         <img
           src={photos[currentIndex]}
           alt=""
-          className="max-w-full max-h-[80vh] object-contain"
+          className="max-w-full max-h-[80vh] object-contain cursor-pointer"
+          onClick={onClose}
         />
         <div className="absolute top-4 right-4 flex items-center gap-3">
           <span className="text-white/80 text-sm">{currentIndex + 1} / {photos.length}</span>
-          <button onClick={onClose} className="text-white/80">
-            <X size={24} />
-          </button>
         </div>
         {currentIndex > 0 && (
           <button
