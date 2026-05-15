@@ -11,6 +11,8 @@
   --color-text: #2D2D3A;
   --color-text-secondary: #8E8E9A;
   --color-border: #F0E8ED;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -31,6 +33,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
+  padding-top: var(--safe-area-top);
+  padding-bottom: var(--safe-area-bottom);
 }
 
 @layer utilities {
@@ -67,14 +71,24 @@ body {
 
   .modal-content {
     @apply bg-white rounded-t-3xl w-full max-w-lg p-6 pb-8 animate-slide-up;
+    padding-bottom: calc(2rem + var(--safe-area-bottom));
   }
 
   .page-container {
-    @apply px-4 pb-24 pt-2;
+    @apply px-4 pt-2;
+    padding-bottom: calc(6rem + var(--safe-area-bottom));
   }
 
   .card-base {
     @apply bg-white rounded-2xl p-4 shadow-card;
+  }
+
+  .safe-top {
+    padding-top: var(--safe-area-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: var(--safe-area-bottom);
   }
 }
 
@@ -106,17 +120,6 @@ body {
   }
   50% {
     transform: translateY(-8px);
-  }
-}
-
-@keyframes confetti-fall {
-  0% {
-    transform: translateY(-10px) rotate(0deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(100px) rotate(720deg);
-    opacity: 0;
   }
 }
 

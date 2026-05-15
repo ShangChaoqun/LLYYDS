@@ -15,7 +15,7 @@ export default function TabBar() {
   const currentPath = location.pathname;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-primary-50 z-40 safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-primary-50 z-40">
       <div className="max-w-lg mx-auto flex items-center justify-around h-16">
         {tabs.map((tab) => {
           const isActive = currentPath === tab.path;
@@ -39,6 +39,7 @@ export default function TabBar() {
           );
         })}
       </div>
+      <div className="safe-bottom" />
     </nav>
   );
 }

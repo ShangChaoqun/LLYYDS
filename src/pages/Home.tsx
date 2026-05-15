@@ -20,13 +20,23 @@ function getCountdown(targetDate: string): { days: number; label: string } {
   return { days, label: days > 0 ? `还有 ${days} 天` : days === 0 ? '就是今天！' : `已过 ${Math.abs(days)} 天` };
 }
 
+function getNextAnnualDate(month: number, day: number): string {
+  const now = new Date();
+  const thisYear = new Date(now.getFullYear(), month - 1, day);
+  if (thisYear.getTime() < now.getTime()) {
+    return `${now.getFullYear() + 1}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+  return `${now.getFullYear()}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+const FIXED_MOMENTS = [
+  { name: '💍 结婚纪念日', date: getNextAnnualDate(5, 28), emoji: '💍', fixed: true as const },
+  { name: '🎂 老婆生日', date: getNextAnnualDate(10, 27), emoji: '🎂', fixed: true as const },
+];
+
 const quickEntries = [
-  { path: '/wishes', emoji: '🌟', label: '愿望' },
   { path: '/menu', emoji: '🍳', label: '菜单' },
   { path: '/cooking', emoji: '👨‍🍳', label: '做饭' },
-  { path: '/diary', emoji: '📖', label: '日记' },
-  { path: '/affinity', emoji: '💕', label: '好感' },
-  { path: '/lottery', emoji: '🎰', label: '抽奖' },
   { path: '/bills', emoji: '💰', label: '记账' },
 ];
 
@@ -55,7 +65,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-bg pb-4">
-      <div className="gradient-primary rounded-b-[2.5rem] px-6 pt-14 pb-8 relative overflow-hidden">
+      <div className="gradient-primary rounded-b-[2.5rem] px-6 pb-8 relative overflow-hidden safe-top" style={{ paddingTop: 'max(env(safe-area-inset-top, 14px), 14px)' }}>
         <div className="absolute top-6 right-8 text-white/15 text-4xl animate-float">✦</div>
         <div className="absolute bottom-10 right-6 text-white/10 text-2xl animate-float" style={{ animationDelay: '1.2s' }}>✧</div>
 
@@ -120,13 +130,27 @@ export default function Home() {
             </button>
           </div>
 
-          {moments.length === 0 ? (
-            <div className="text-center py-4 text-gray-300">
-              <Calendar size={28} className="mx-auto mb-1" />
-              <p className="text-xs">点击 + 添加关键时刻</p>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
+          <div className="space-y-1.5">
+              {FIXED_MOMENTS.map((moment) => {
+                const countdown = getCountdown(moment.date);
+                const isToday = countdown.days === 0;
+                return (
+                  <div
+                    key={moment.name}
+                    className={`flex items-center justify-between p-2.5 rounded-xl ${
+                      isToday ? 'bg-primary-50 border border-primary-100' : 'bg-gradient-to-r from-primary-50/40 to-secondary-50/40'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-medium text-gray-700 truncate">{moment.name}</h4>
+                      <span className="text-[10px] text-gray-400">{moment.date}</span>
+                    </div>
+                    <span className={`text-[11px] font-semibold ${isToday ? 'text-primary' : 'text-primary'}`}>
+                      {countdown.label}
+                    </span>
+                  </div>
+                );
+              })}
               {moments.map((moment) => {
                 const countdown = getCountdown(moment.date);
                 const isToday = countdown.days === 0;
@@ -157,14 +181,13 @@ export default function Home() {
                 );
               })}
             </div>
-          )}
         </div>
       </div>
 
       <div className="px-4 mt-3">
         <div className="bg-white rounded-2xl p-4 shadow-card">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">快速入口</h3>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-3 gap-2">
             {quickEntries.map((item) => (
               <button
                 key={item.path}
