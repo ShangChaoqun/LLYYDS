@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { Person } from '@/store/useAffinityStore';
+import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
+import { useRoomStore } from '@/store/useRoomStore';
 
 export interface LotteryItem {
   id: string;
@@ -9,11 +11,12 @@ export interface LotteryItem {
 
 interface LotteryState {
   itemsMap: Record<Person, LotteryItem[]>;
+  loaded: boolean;
+  loadFromFirebase: () => void;
+  subscribeToFirebase: () => () => void;
   addItem: (person: Person, name: string) => void;
   removeItem: (person: Person, id: string) => void;
 }
-
-const STORAGE_KEY = 'llyyds_lottery_map';
 
 const DEFAULT_COLORS = [
   '#FF6B8A', '#B088F9', '#6EC6FF', '#FFD93D',
@@ -21,49 +24,48 @@ const DEFAULT_COLORS = [
   '#34D399', '#FBBF24', '#60A5FA', '#F87171',
 ];
 
-function loadItemsMap(): Record<Person, LotteryItem[]> {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (data) return JSON.parse(data);
-    const oldKey = 'llyyds_lottery';
-    const oldData = localStorage.getItem(oldKey);
-    if (oldData) {
-      const oldItems: LotteryItem[] = JSON.parse(oldData);
-      localStorage.removeItem(oldKey);
-      const map = { chaochao: oldItems, linlin: [] as LotteryItem[] };
-      saveItemsMap(map);
-      return map;
-    }
-    return { chaochao: [], linlin: [] };
-  } catch {
-    return { chaochao: [], linlin: [] };
-  }
-}
+const INITIAL_MAP: Record<Person, LotteryItem[]> = { chaochao: [], linlin: [] };
 
-function saveItemsMap(itemsMap: Record<Person, LotteryItem[]>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(itemsMap));
-}
+export const useLotteryStore = create<LotteryState>((set, get) => ({
+  itemsMap: { ...INITIAL_MAP },
+  loaded: false,
 
-export const useLotteryStore = create<LotteryState>((set) => ({
-  itemsMap: loadItemsMap(),
-  addItem: (person, name) =>
-    set((state) => {
-      const items = state.itemsMap[person];
-      const colorIndex = items.length % DEFAULT_COLORS.length;
-      const newItem: LotteryItem = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        name,
-        color: DEFAULT_COLORS[colorIndex],
-      };
-      const itemsMap = { ...state.itemsMap, [person]: [...items, newItem] };
-      saveItemsMap(itemsMap);
-      return { itemsMap };
-    }),
-  removeItem: (person, id) =>
-    set((state) => {
-      const items = state.itemsMap[person].filter((i) => i.id !== id);
-      const itemsMap = { ...state.itemsMap, [person]: items };
-      saveItemsMap(itemsMap);
-      return { itemsMap };
-    }),
+  loadFromFirebase: async () => {
+    const roomId = useRoomStore.getState().roomId;
+    if (!roomId) return;
+    const data = await supabaseGet<Record<Person, LotteryItem[]>>(roomId, 'lotteryItemsMap');
+    set({ itemsMap: data || { ...INITIAL_MAP }, loaded: true });
+  },
+
+  subscribeToFirebase: () => {
+    const roomId = useRoomStore.getState().roomId;
+    if (!roomId) return () => {};
+    return supabaseOn(roomId, 'lotteryItemsMap', (data) => {
+      set({ itemsMap: data || { ...INITIAL_MAP }, loaded: true });
+    });
+  },
+
+  addItem: (person, name) => {
+    const state = get();
+    const items = state.itemsMap[person];
+    const colorIndex = items.length % DEFAULT_COLORS.length;
+    const newItem: LotteryItem = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name,
+      color: DEFAULT_COLORS[colorIndex],
+    };
+    const itemsMap = { ...state.itemsMap, [person]: [...items, newItem] };
+    set({ itemsMap });
+    const roomId = useRoomStore.getState().roomId;
+    if (roomId) supabaseSet(roomId, 'lotteryItemsMap', itemsMap);
+  },
+
+  removeItem: (person, id) => {
+    const state = get();
+    const items = state.itemsMap[person].filter((i) => i.id !== id);
+    const itemsMap = { ...state.itemsMap, [person]: items };
+    set({ itemsMap });
+    const roomId = useRoomStore.getState().roomId;
+    if (roomId) supabaseSet(roomId, 'lotteryItemsMap', itemsMap);
+  },
 }));

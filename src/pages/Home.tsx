@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKeyMomentStore, KeyMoment } from '@/store/useKeyMomentStore';
+import { useRoomStore, genderToLabel } from '@/store/useRoomStore';
+import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
 import { Plus, X, Pencil, Trash2, Calendar, Heart } from 'lucide-react';
 import { compressImage } from '@/utils/helpers';
 
@@ -43,25 +45,54 @@ const quickEntries = [
 export default function Home() {
   const navigate = useNavigate();
   const { moments, addMoment, updateMoment, deleteMoment } = useKeyMomentStore();
+  const { roomId, gender } = useRoomStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editMoment, setEditMoment] = useState<KeyMoment | null>(null);
   const daysTogether = getDaysTogether();
 
-  const [avatarLeft, setAvatarLeft] = useState(() => localStorage.getItem('llyyds_avatar_left') || '');
-  const [avatarRight, setAvatarRight] = useState(() => localStorage.getItem('llyyds_avatar_right') || '');
+  const [avatarChaochao, setAvatarChaochao] = useState('');
+  const [avatarLinlin, setAvatarLinlin] = useState('');
 
-  const handleAvatar = async (side: 'left' | 'right', e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (!roomId) return;
+    const loadAvatars = async () => {
+      const data = await supabaseGet<{ chaochao?: string; linlin?: string }>(roomId, 'avatars');
+      if (data) {
+        setAvatarChaochao(data.chaochao || '');
+        setAvatarLinlin(data.linlin || '');
+      }
+    };
+    loadAvatars();
+    const unsub = supabaseOn(roomId, 'avatars', (data) => {
+      if (data) {
+        setAvatarChaochao(data.chaochao || '');
+        setAvatarLinlin(data.linlin || '');
+      }
+    });
+    return unsub;
+  }, [roomId]);
+
+  const handleAvatar = async (person: 'chaochao' | 'linlin', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !roomId) return;
     const compressed = await compressImage(file, 200, 0.8);
-    if (side === 'left') {
-      setAvatarLeft(compressed);
-      localStorage.setItem('llyyds_avatar_left', compressed);
+    if (person === 'chaochao') {
+      setAvatarChaochao(compressed);
     } else {
-      setAvatarRight(compressed);
-      localStorage.setItem('llyyds_avatar_right', compressed);
+      setAvatarLinlin(compressed);
     }
+    const currentData = await supabaseGet<{ chaochao?: string; linlin?: string }>(roomId, 'avatars');
+    await supabaseSet(roomId, 'avatars', { ...currentData, [person]: compressed });
   };
+
+  const leftPerson = gender === 'female' ? 'linlin' : 'chaochao';
+  const rightPerson = gender === 'female' ? 'chaochao' : 'linlin';
+  const leftAvatar = leftPerson === 'chaochao' ? avatarChaochao : avatarLinlin;
+  const rightAvatar = rightPerson === 'chaochao' ? avatarChaochao : avatarLinlin;
+  const leftEmoji = leftPerson === 'chaochao' ? '🧑' : '👩';
+  const rightEmoji = rightPerson === 'chaochao' ? '🧑' : '👩';
+  const leftLabel = genderToLabel(leftPerson === 'chaochao' ? 'male' : 'female');
+  const rightLabel = genderToLabel(rightPerson === 'chaochao' ? 'male' : 'female');
 
   return (
     <div className="min-h-screen bg-bg pb-4">
@@ -72,16 +103,16 @@ export default function Home() {
         <div className="flex items-center justify-center gap-4 mb-5">
           <label className="relative cursor-pointer group">
             <div className="w-[72px] h-[72px] rounded-full border-[3px] border-white/50 overflow-hidden bg-white/20 flex items-center justify-center shadow-lg group-active:scale-95 transition-transform">
-              {avatarLeft ? (
-                <img src={avatarLeft} alt="超超" className="w-full h-full object-cover" />
+              {leftAvatar ? (
+                <img src={leftAvatar} alt={leftLabel} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-2xl">🧑</span>
+                <span className="text-2xl">{leftEmoji}</span>
               )}
             </div>
             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-white/30 backdrop-blur-sm rounded-full px-2 py-0.5">
-              <span className="text-[10px] text-white font-medium">超超</span>
+              <span className="text-[10px] text-white font-medium">{leftLabel}</span>
             </div>
-            <input type="file" accept="image/*" onChange={(e) => handleAvatar('left', e)} className="hidden" />
+            <input type="file" accept="image/*" onChange={(e) => handleAvatar(leftPerson, e)} className="hidden" />
           </label>
 
           <div className="flex flex-col items-center">
@@ -90,16 +121,16 @@ export default function Home() {
 
           <label className="relative cursor-pointer group">
             <div className="w-[72px] h-[72px] rounded-full border-[3px] border-white/50 overflow-hidden bg-white/20 flex items-center justify-center shadow-lg group-active:scale-95 transition-transform">
-              {avatarRight ? (
-                <img src={avatarRight} alt="琳琳" className="w-full h-full object-cover" />
+              {rightAvatar ? (
+                <img src={rightAvatar} alt={rightLabel} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-2xl">👩</span>
+                <span className="text-2xl">{rightEmoji}</span>
               )}
             </div>
             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-white/30 backdrop-blur-sm rounded-full px-2 py-0.5">
-              <span className="text-[10px] text-white font-medium">琳琳</span>
+              <span className="text-[10px] text-white font-medium">{rightLabel}</span>
             </div>
-            <input type="file" accept="image/*" onChange={(e) => handleAvatar('right', e)} className="hidden" />
+            <input type="file" accept="image/*" onChange={(e) => handleAvatar(rightPerson, e)} className="hidden" />
           </label>
         </div>
 
@@ -163,7 +194,14 @@ export default function Home() {
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-medium text-gray-700 truncate">{moment.name}</h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-xs font-medium text-gray-700 truncate">{moment.name}</h4>
+                        {moment.createdBy && (
+                          <span className="text-[9px] text-primary font-medium flex-shrink-0">
+                            {moment.createdBy === 'male' ? '🧑' : '👩'}{genderToLabel(moment.createdBy)}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-gray-400">{moment.date}</span>
                     </div>
                     <div className="flex items-center gap-1.5">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useBillStore, CATEGORIES } from '@/store/useBillStore';
 import { formatDate } from '@/utils/helpers';
+import { genderToLabel } from '@/store/useRoomStore';
 import { Plus, X, Trash2, BarChart3, Receipt } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 
@@ -116,7 +117,14 @@ export default function Bills() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-700">{cat?.label || '其他'}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm text-gray-700">{cat?.label || '其他'}</span>
+                                  {record.createdBy && (
+                                    <span className="text-[10px] text-primary font-medium">
+                                      {record.createdBy === 'male' ? '🧑' : '👩'}{genderToLabel(record.createdBy)}
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-sm font-semibold text-primary">-¥{record.amount.toFixed(2)}</span>
                               </div>
                               {record.note && <p className="text-[10px] text-gray-400 mt-0.5 truncate">{record.note}</p>}

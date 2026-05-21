@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWishStore, Wish } from '@/store/useWishStore';
 import { formatDate, formatDateTime, compressImage, getTodayStr } from '@/utils/helpers';
+import { genderToLabel } from '@/store/useRoomStore';
 import { Check, Plus, ImagePlus, Trash2, Calendar, X, ArrowUpDown } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 
@@ -175,6 +176,11 @@ function WishCard({
             <p className="text-xs text-gray-400 mt-1 line-clamp-2">{wish.description}</p>
           )}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
+            {wish.createdBy && (
+              <span className="inline-flex items-center gap-0.5 text-xs text-primary font-medium">
+                {wish.createdBy === 'male' ? '🧑' : '👩'} {genderToLabel(wish.createdBy)}
+              </span>
+            )}
             {wish.proposedAt && (
               <span className="flex items-center gap-1 text-xs text-gray-400">
                 <Calendar size={12} />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAffinityStore, AffinityEvent, Person } from '@/store/useAffinityStore';
 import { formatDateTime } from '@/utils/helpers';
+import { genderToLabel } from '@/store/useRoomStore';
 import { Plus, X, Trash2, Heart, TrendingUp, TrendingDown } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 
@@ -113,7 +114,14 @@ function EventCard({ event, onDelete }: { event: AffinityEvent; onDelete: () => 
           {event.change > 0 ? <TrendingUp size={15} className="text-green-500" /> : <TrendingDown size={15} className="text-red-400" />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-700">{event.description}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm text-gray-700">{event.description}</p>
+            {event.createdBy && (
+              <span className="text-[10px] text-primary font-medium flex-shrink-0">
+                {event.createdBy === 'male' ? '🧑' : '👩'}{genderToLabel(event.createdBy)}
+              </span>
+            )}
+          </div>
           <span className="text-[10px] text-gray-400">{formatDateTime(new Date(event.createdAt).toISOString())}</span>
         </div>
         <span className={`text-sm font-semibold ${event.change > 0 ? 'text-green-500' : 'text-red-400'}`}>

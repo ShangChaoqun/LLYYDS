@@ -1,58 +1,64 @@
 import { create } from 'zustand';
+import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
+import { useRoomStore, Gender } from '@/store/useRoomStore';
 
 export interface CookingRecord {
   id: string;
   date: string;
   photos: string[];
   note: string;
+  createdBy: Gender;
   createdAt: number;
 }
 
 interface CookingState {
   records: CookingRecord[];
-  addRecord: (record: Omit<CookingRecord, 'id' | 'createdAt'>) => void;
+  loaded: boolean;
+  loadFromFirebase: () => void;
+  subscribeToFirebase: () => () => void;
+  addRecord: (record: Omit<CookingRecord, 'id' | 'createdBy' | 'createdAt'>) => void;
   deleteRecord: (id: string) => void;
 }
 
-const STORAGE_KEY = 'llyyds_cooking';
+export const useCookingStore = create<CookingState>((set, get) => ({
+  records: [],
+  loaded: false,
 
-function loadRecords(): CookingRecord[] {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (data) {
-      const parsed = JSON.parse(data);
-      return parsed.map((r: Record<string, unknown>) => ({
-        ...r,
-        photos: (r.photos as string[]) || ((r.photo as string) ? [r.photo as string] : []),
-      }));
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
+  loadFromFirebase: async () => {
+    const roomId = useRoomStore.getState().roomId;
+    if (!roomId) return;
+    const data = await supabaseGet<CookingRecord[]>(roomId, 'cookingRecords');
+    set({ records: data || [], loaded: true });
+  },
 
-function saveRecords(records: CookingRecord[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-}
+  subscribeToFirebase: () => {
+    const roomId = useRoomStore.getState().roomId;
+    if (!roomId) return () => {};
+    return supabaseOn(roomId, 'cookingRecords', (data) => {
+      set({ records: data || [], loaded: true });
+    });
+  },
 
-export const useCookingStore = create<CookingState>((set) => ({
-  records: loadRecords(),
-  addRecord: (record) =>
-    set((state) => {
-      const newRecord: CookingRecord = {
-        ...record,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        createdAt: Date.now(),
-      };
-      const records = [newRecord, ...state.records];
-      saveRecords(records);
-      return { records };
-    }),
-  deleteRecord: (id) =>
-    set((state) => {
-      const records = state.records.filter((r) => r.id !== id);
-      saveRecords(records);
-      return { records };
-    }),
+  addRecord: (record) => {
+    const state = get();
+    const gender = useRoomStore.getState().gender || 'male';
+    const newRecord: CookingRecord = {
+      ...record,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      createdBy: gender as Gender,
+      createdAt: Date.now(),
+    };
+    const records = [newRecord, ...state.records];
+    set({ records });
+    const roomId = useRoomStore.getState().roomId;
+    if (roomId) supabaseSet(roomId, 'cookingRecords', records);
+  },
+
+  deleteRecord: (id) => {
+    const state = get();
+    const records = state.records.filter((r) => r.id !== id);
+    set({ records });
+    const roomId = useRoomStore.getState().roomId;
+    if (roomId) supabaseSet(roomId, 'cookingRecords', records);
+  },
 }));

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDiaryStore, DiaryEntry } from '@/store/useDiaryStore';
 import { compressImage, formatDateTime } from '@/utils/helpers';
+import { genderToLabel } from '@/store/useRoomStore';
 import { Plus, ImagePlus, X, Trash2, Pencil, BookOpen } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 
@@ -34,9 +35,16 @@ export default function Diary() {
             {entries.map((entry) => (
               <div key={entry.id} className="card-base animate-fade-in">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-400">
-                    {formatDateTime(new Date(entry.updatedAt).toISOString())}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {entry.createdBy && (
+                      <span className="inline-flex items-center gap-0.5 text-xs text-primary font-medium">
+                        {entry.createdBy === 'male' ? '🧑' : '👩'} {genderToLabel(entry.createdBy)}
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400">
+                      {formatDateTime(new Date(entry.updatedAt).toISOString())}
+                    </span>
+                  </div>
                   <div className="flex gap-1">
                     <button
                       onClick={() => setEditEntry(entry)}

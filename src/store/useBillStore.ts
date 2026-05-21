@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
+import { useRoomStore, Gender } from '@/store/useRoomStore';
 
 export interface BillRecord {
   id: string;
@@ -6,16 +8,18 @@ export interface BillRecord {
   category: string;
   note: string;
   date: string;
+  createdBy: Gender;
   createdAt: number;
 }
 
 interface BillState {
   records: BillRecord[];
-  addRecord: (record: Omit<BillRecord, 'id' | 'createdAt'>) => void;
+  loaded: boolean;
+  loadFromFirebase: () => void;
+  subscribeToFirebase: () => () => void;
+  addRecord: (record: Omit<BillRecord, 'id' | 'createdBy' | 'createdAt'>) => void;
   deleteRecord: (id: string) => void;
 }
-
-const STORAGE_KEY = 'llyyds_bills';
 
 const CATEGORIES = [
   { key: 'food', label: '餐饮', emoji: '🍜' },
@@ -30,36 +34,45 @@ const CATEGORIES = [
 
 export { CATEGORIES };
 
-function loadRecords(): BillRecord[] {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
-}
+export const useBillStore = create<BillState>((set, get) => ({
+  records: [],
+  loaded: false,
 
-function saveRecords(records: BillRecord[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-}
+  loadFromFirebase: async () => {
+    const roomId = useRoomStore.getState().roomId;
+    if (!roomId) return;
+    const data = await supabaseGet<BillRecord[]>(roomId, 'billRecords');
+    set({ records: data || [], loaded: true });
+  },
 
-export const useBillStore = create<BillState>((set) => ({
-  records: loadRecords(),
-  addRecord: (record) =>
-    set((state) => {
-      const newRecord: BillRecord = {
-        ...record,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        createdAt: Date.now(),
-      };
-      const records = [newRecord, ...state.records];
-      saveRecords(records);
-      return { records };
-    }),
-  deleteRecord: (id) =>
-    set((state) => {
-      const records = state.records.filter((r) => r.id !== id);
-      saveRecords(records);
-      return { records };
-    }),
+  subscribeToFirebase: () => {
+    const roomId = useRoomStore.getState().roomId;
+    if (!roomId) return () => {};
+    return supabaseOn(roomId, 'billRecords', (data) => {
+      set({ records: data || [], loaded: true });
+    });
+  },
+
+  addRecord: (record) => {
+    const state = get();
+    const gender = useRoomStore.getState().gender || 'male';
+    const newRecord: BillRecord = {
+      ...record,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      createdBy: gender as Gender,
+      createdAt: Date.now(),
+    };
+    const records = [newRecord, ...state.records];
+    set({ records });
+    const roomId = useRoomStore.getState().roomId;
+    if (roomId) supabaseSet(roomId, 'billRecords', records);
+  },
+
+  deleteRecord: (id) => {
+    const state = get();
+    const records = state.records.filter((r) => r.id !== id);
+    set({ records });
+    const roomId = useRoomStore.getState().roomId;
+    if (roomId) supabaseSet(roomId, 'billRecords', records);
+  },
 }));

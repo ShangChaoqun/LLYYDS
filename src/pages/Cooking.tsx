@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCookingStore, CookingRecord } from '@/store/useCookingStore';
 import { compressImage, formatDate } from '@/utils/helpers';
+import { genderToLabel } from '@/store/useRoomStore';
 import { Plus, ImagePlus, X, Trash2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 
@@ -118,6 +119,11 @@ function CookingCard({
           )}
           {!record.note && (
             <p className="text-sm text-gray-400">今日下厨</p>
+          )}
+          {record.createdBy && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium mt-1">
+              {record.createdBy === 'male' ? '🧑' : '👩'} {genderToLabel(record.createdBy)}
+            </span>
           )}
         </div>
       </div>

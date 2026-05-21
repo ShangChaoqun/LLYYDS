@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMenuStore, MenuItem } from '@/store/useMenuStore';
 import { compressImage } from '@/utils/helpers';
+import { genderToLabel } from '@/store/useRoomStore';
 import { Plus, ImagePlus, X, Trash2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 
@@ -77,7 +78,14 @@ export default function Menu() {
                   </div>
                 )}
                 <div className="p-3">
-                  <h3 className="text-sm font-semibold text-gray-800 truncate">{item.name}</h3>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-sm font-semibold text-gray-800 truncate">{item.name}</h3>
+                    {item.createdBy && (
+                      <span className="text-[10px] text-primary font-medium flex-shrink-0">
+                        {item.createdBy === 'male' ? '🧑' : '👩'}{genderToLabel(item.createdBy)}
+                      </span>
+                    )}
+                  </div>
                   {item.description && (
                     <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.description}</p>
                   )}
