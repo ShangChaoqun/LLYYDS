@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
-import { useRoomStore, Gender } from '@/store/useRoomStore';
+import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
 
 export interface KeyMoment {
   id: string;
@@ -24,14 +24,14 @@ export const useKeyMomentStore = create<KeyMomentState>((set, get) => ({
   loaded: false,
 
   loadFromFirebase: async () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return;
     const data = await supabaseGet<KeyMoment[]>(roomId, 'keyMoments');
     set({ moments: data || [], loaded: true });
   },
 
   subscribeToFirebase: () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return () => {};
     return supabaseOn(roomId, 'keyMoments', (data) => {
       set({ moments: data || [], loaded: true });
@@ -48,7 +48,7 @@ export const useKeyMomentStore = create<KeyMomentState>((set, get) => ({
     };
     const moments = [...state.moments, newMoment];
     set({ moments });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'keyMoments', moments);
   },
 
@@ -56,7 +56,7 @@ export const useKeyMomentStore = create<KeyMomentState>((set, get) => ({
     const state = get();
     const moments = state.moments.map((m) => m.id === id ? { ...m, ...updates } : m);
     set({ moments });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'keyMoments', moments);
   },
 
@@ -64,7 +64,7 @@ export const useKeyMomentStore = create<KeyMomentState>((set, get) => ({
     const state = get();
     const moments = state.moments.filter((m) => m.id !== id);
     set({ moments });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'keyMoments', moments);
   },
 }));

@@ -50,14 +50,7 @@ VITE_SUPABASE_ANON_KEY=eyJhbGci...</pre>
       </div>
       <div className="w-full max-w-sm bg-gray-50 rounded-2xl p-4 mt-3">
         <p className="text-[10px] text-gray-400 mb-1">SQL 建表语句：</p>
-        <pre className="text-[10px] text-gray-600 overflow-x-auto whitespace-pre">{`CREATE TABLE rooms (
-  id BIGSERIAL PRIMARY KEY,
-  room_id TEXT UNIQUE NOT NULL,
-  created_by TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE room_data (
+        <pre className="text-[10px] text-gray-600 overflow-x-auto whitespace-pre">{`CREATE TABLE room_data (
   id BIGSERIAL PRIMARY KEY,
   room_id TEXT NOT NULL,
   collection TEXT NOT NULL,
@@ -66,22 +59,24 @@ CREATE TABLE room_data (
   UNIQUE(room_id, collection)
 );
 
-ALTER TABLE rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE room_data ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public rooms" ON rooms FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public room_data" ON room_data FOR ALL USING (true) WITH CHECK (true);`}</pre>
+CREATE POLICY "Public room_data"
+  ON room_data FOR ALL
+  USING (true) WITH CHECK (true);`}</pre>
       </div>
     </div>
   );
 }
 
 function AppContent() {
-  const { roomId, gender } = useRoomStore();
+  const { gender } = useRoomStore();
   const unsubRef = useRef<(() => void)[]>([]);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
-    if (roomId && gender && isSupabaseConfigured()) {
+    if (gender && isSupabaseConfigured() && !loadedRef.current) {
+      loadedRef.current = true;
       const stores = [
         useWishStore, useMenuStore, useCookingStore,
         useDiaryStore, useAffinityStore, useLotteryStore,
@@ -96,14 +91,15 @@ function AppContent() {
     return () => {
       unsubRef.current.forEach((fn) => fn());
       unsubRef.current = [];
+      loadedRef.current = false;
     };
-  }, [roomId, gender]);
+  }, [gender]);
 
   if (!isSupabaseConfigured()) {
     return <SupabaseConfigPage />;
   }
 
-  if (!roomId || !gender) {
+  if (!gender) {
     return <Welcome />;
   }
 

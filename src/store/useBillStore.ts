@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
-import { useRoomStore, Gender } from '@/store/useRoomStore';
+import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
 
 export interface BillRecord {
   id: string;
@@ -39,14 +39,14 @@ export const useBillStore = create<BillState>((set, get) => ({
   loaded: false,
 
   loadFromFirebase: async () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return;
     const data = await supabaseGet<BillRecord[]>(roomId, 'billRecords');
     set({ records: data || [], loaded: true });
   },
 
   subscribeToFirebase: () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return () => {};
     return supabaseOn(roomId, 'billRecords', (data) => {
       set({ records: data || [], loaded: true });
@@ -64,7 +64,7 @@ export const useBillStore = create<BillState>((set, get) => ({
     };
     const records = [newRecord, ...state.records];
     set({ records });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'billRecords', records);
   },
 
@@ -72,7 +72,7 @@ export const useBillStore = create<BillState>((set, get) => ({
     const state = get();
     const records = state.records.filter((r) => r.id !== id);
     set({ records });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'billRecords', records);
   },
 }));

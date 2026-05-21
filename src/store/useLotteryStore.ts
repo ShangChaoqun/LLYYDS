@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Person } from '@/store/useAffinityStore';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
-import { useRoomStore } from '@/store/useRoomStore';
+import { useRoomStore, getRoomId } from '@/store/useRoomStore';
 
 export interface LotteryItem {
   id: string;
@@ -31,14 +31,14 @@ export const useLotteryStore = create<LotteryState>((set, get) => ({
   loaded: false,
 
   loadFromFirebase: async () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return;
     const data = await supabaseGet<Record<Person, LotteryItem[]>>(roomId, 'lotteryItemsMap');
     set({ itemsMap: data || { ...INITIAL_MAP }, loaded: true });
   },
 
   subscribeToFirebase: () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return () => {};
     return supabaseOn(roomId, 'lotteryItemsMap', (data) => {
       set({ itemsMap: data || { ...INITIAL_MAP }, loaded: true });
@@ -56,7 +56,7 @@ export const useLotteryStore = create<LotteryState>((set, get) => ({
     };
     const itemsMap = { ...state.itemsMap, [person]: [...items, newItem] };
     set({ itemsMap });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'lotteryItemsMap', itemsMap);
   },
 
@@ -65,7 +65,7 @@ export const useLotteryStore = create<LotteryState>((set, get) => ({
     const items = state.itemsMap[person].filter((i) => i.id !== id);
     const itemsMap = { ...state.itemsMap, [person]: items };
     set({ itemsMap });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'lotteryItemsMap', itemsMap);
   },
 }));

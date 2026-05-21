@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKeyMomentStore, KeyMoment } from '@/store/useKeyMomentStore';
-import { useRoomStore, genderToLabel } from '@/store/useRoomStore';
+import { useRoomStore, genderToLabel, getRoomId } from '@/store/useRoomStore';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
 import { Plus, X, Pencil, Trash2, Calendar, Heart } from 'lucide-react';
 import { compressImage } from '@/utils/helpers';
@@ -45,7 +45,8 @@ const quickEntries = [
 export default function Home() {
   const navigate = useNavigate();
   const { moments, addMoment, updateMoment, deleteMoment } = useKeyMomentStore();
-  const { roomId, gender } = useRoomStore();
+  const { gender } = useRoomStore();
+  const roomId = getRoomId();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editMoment, setEditMoment] = useState<KeyMoment | null>(null);
   const daysTogether = getDaysTogether();

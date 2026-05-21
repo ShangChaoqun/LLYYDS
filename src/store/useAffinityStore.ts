@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
-import { useRoomStore, Gender } from '@/store/useRoomStore';
+import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
 
 export type Person = 'chaochao' | 'linlin';
 
@@ -36,7 +36,7 @@ export const useAffinityStore = create<AffinityState>((set, get) => ({
   loaded: false,
 
   loadFromFirebase: async () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return;
     const [scoresData, eventsData] = await Promise.all([
       supabaseGet<AffinityScores>(roomId, 'affinityScores'),
@@ -50,7 +50,7 @@ export const useAffinityStore = create<AffinityState>((set, get) => ({
   },
 
   subscribeToFirebase: () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return () => {};
     const unsub1 = supabaseOn(roomId, 'affinityScores', (data) => {
       if (data) set({ scores: data });
@@ -76,7 +76,7 @@ export const useAffinityStore = create<AffinityState>((set, get) => ({
     const scores = { ...state.scores, [person]: newScore };
     const events = [newEvent, ...state.events];
     set({ scores, events });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) {
       supabaseSet(roomId, 'affinityScores', scores);
       supabaseSet(roomId, 'affinityEvents', events);
@@ -91,7 +91,7 @@ export const useAffinityStore = create<AffinityState>((set, get) => ({
     const scores = { ...state.scores, [event.person]: newScore };
     const events = state.events.filter((e) => e.id !== id);
     set({ scores, events });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) {
       supabaseSet(roomId, 'affinityScores', scores);
       supabaseSet(roomId, 'affinityEvents', events);

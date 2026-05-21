@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
-import { useRoomStore, Gender } from '@/store/useRoomStore';
+import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
 
 export interface Wish {
   id: string;
@@ -32,14 +32,14 @@ export const useWishStore = create<WishState>((set, get) => ({
   loaded: false,
 
   loadFromFirebase: async () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return;
     const data = await supabaseGet<Wish[]>(roomId, 'wishes');
     set({ wishes: data || [], loaded: true });
   },
 
   subscribeToFirebase: () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return () => {};
     return supabaseOn(roomId, 'wishes', (data) => {
       set({ wishes: data || [], loaded: true });
@@ -60,7 +60,7 @@ export const useWishStore = create<WishState>((set, get) => ({
     };
     const wishes = [newWish, ...state.wishes];
     set({ wishes });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'wishes', wishes);
   },
 
@@ -72,7 +72,7 @@ export const useWishStore = create<WishState>((set, get) => ({
         : w
     );
     set({ wishes });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'wishes', wishes);
   },
 
@@ -82,7 +82,7 @@ export const useWishStore = create<WishState>((set, get) => ({
       w.id === id ? { ...w, completed: false, completedAt: '', completedPhoto: '' } : w
     );
     set({ wishes });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'wishes', wishes);
   },
 
@@ -90,7 +90,7 @@ export const useWishStore = create<WishState>((set, get) => ({
     const state = get();
     const wishes = state.wishes.filter((w) => w.id !== id);
     set({ wishes });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'wishes', wishes);
   },
 }));

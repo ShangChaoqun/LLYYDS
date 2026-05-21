@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
-import { useRoomStore, Gender } from '@/store/useRoomStore';
+import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
 
 export interface CookingRecord {
   id: string;
@@ -25,14 +25,14 @@ export const useCookingStore = create<CookingState>((set, get) => ({
   loaded: false,
 
   loadFromFirebase: async () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return;
     const data = await supabaseGet<CookingRecord[]>(roomId, 'cookingRecords');
     set({ records: data || [], loaded: true });
   },
 
   subscribeToFirebase: () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return () => {};
     return supabaseOn(roomId, 'cookingRecords', (data) => {
       set({ records: data || [], loaded: true });
@@ -50,7 +50,7 @@ export const useCookingStore = create<CookingState>((set, get) => ({
     };
     const records = [newRecord, ...state.records];
     set({ records });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'cookingRecords', records);
   },
 
@@ -58,7 +58,7 @@ export const useCookingStore = create<CookingState>((set, get) => ({
     const state = get();
     const records = state.records.filter((r) => r.id !== id);
     set({ records });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'cookingRecords', records);
   },
 }));

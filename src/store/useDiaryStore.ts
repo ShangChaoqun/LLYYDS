@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
-import { useRoomStore, Gender } from '@/store/useRoomStore';
+import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
 
 export interface DiaryEntry {
   id: string;
@@ -26,14 +26,14 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   loaded: false,
 
   loadFromFirebase: async () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return;
     const data = await supabaseGet<DiaryEntry[]>(roomId, 'diaryEntries');
     set({ entries: data || [], loaded: true });
   },
 
   subscribeToFirebase: () => {
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (!roomId) return () => {};
     return supabaseOn(roomId, 'diaryEntries', (data) => {
       set({ entries: data || [], loaded: true });
@@ -53,7 +53,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     };
     const entries = [newEntry, ...state.entries];
     set({ entries });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'diaryEntries', entries);
   },
 
@@ -63,7 +63,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
       e.id === id ? { ...e, ...updates, updatedAt: Date.now() } : e
     );
     set({ entries });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'diaryEntries', entries);
   },
 
@@ -71,7 +71,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     const state = get();
     const entries = state.entries.filter((e) => e.id !== id);
     set({ entries });
-    const roomId = useRoomStore.getState().roomId;
+    const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'diaryEntries', entries);
   },
 }));
