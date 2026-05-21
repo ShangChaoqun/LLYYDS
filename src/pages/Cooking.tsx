@@ -4,11 +4,16 @@ import { compressImage, formatDate } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
 import { Plus, ImagePlus, X, Trash2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
+import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Cooking() {
   const { records, deleteRecord } = useCookingStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewPhotos, setViewPhotos] = useState<{ photos: string[]; index: number } | null>(null);
+
+  const handleRefresh = async () => {
+    await useCookingStore.getState().loadFromFirebase();
+  };
 
   const sortedRecords = [...records].sort((a, b) => {
     if (a.date > b.date) return -1;
@@ -24,6 +29,7 @@ export default function Cooking() {
   });
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg">
       <PageHeader
         title="做饭列表"
@@ -78,6 +84,7 @@ export default function Cooking() {
         />
       )}
     </div>
+    </PullToRefresh>
   );
 }
 

@@ -4,6 +4,7 @@ import { formatDate } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
 import { Plus, X, Trash2, BarChart3, Receipt } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
+import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Bills() {
   const { records, deleteRecord } = useBillStore();
@@ -13,6 +14,10 @@ export default function Bills() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+
+  const handleRefresh = async () => {
+    await useBillStore.getState().loadFromFirebase();
+  };
 
   const filteredRecords = records.filter((r) => r.date.startsWith(filterMonth));
   const totalExpense = filteredRecords.reduce((sum, r) => sum + r.amount, 0);
@@ -29,6 +34,7 @@ export default function Bills() {
   });
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg">
       <PageHeader
         title="记账本"
@@ -146,6 +152,7 @@ export default function Bills() {
 
       {showAddModal && <AddBillModal onClose={() => setShowAddModal(false)} />}
     </div>
+    </PullToRefresh>
   );
 }
 

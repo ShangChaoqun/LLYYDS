@@ -4,6 +4,7 @@ import { formatDateTime } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
 import { Plus, X, Trash2, Heart, TrendingUp, TrendingDown } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
+import PullToRefresh from '@/components/PullToRefresh';
 
 const PERSON_CONFIG: Record<Person, { name: string; emoji: string; color: string; bgColor: string }> = {
   chaochao: { name: '对超超', emoji: '🧑', color: '#6EC6FF', bgColor: 'bg-blue-50' },
@@ -14,6 +15,10 @@ export default function Affinity() {
   const { scores, events, addEvent, deleteEvent } = useAffinityStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [activePerson, setActivePerson] = useState<Person>('chaochao');
+
+  const handleRefresh = async () => {
+    await useAffinityStore.getState().loadFromFirebase();
+  };
 
   const getScoreLabel = (score: number) => {
     if (score >= 80) return '甜蜜蜜';
@@ -30,6 +35,7 @@ export default function Affinity() {
   };
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg">
       <PageHeader
         title="好感度"
@@ -99,6 +105,7 @@ export default function Affinity() {
 
       {showAddModal && <AddEventModal onClose={() => setShowAddModal(false)} />}
     </div>
+    </PullToRefresh>
   );
 }
 

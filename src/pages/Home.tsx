@@ -5,6 +5,7 @@ import { useRoomStore, genderToLabel, getRoomId } from '@/store/useRoomStore';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
 import { Plus, X, Pencil, Trash2, Calendar, Heart } from 'lucide-react';
 import { compressImage } from '@/utils/helpers';
+import PullToRefresh from '@/components/PullToRefresh';
 
 const TOGETHER_SINCE = new Date('2021-05-28');
 
@@ -95,7 +96,24 @@ export default function Home() {
   const leftLabel = genderToLabel(leftPerson === 'chaochao' ? 'male' : 'female');
   const rightLabel = genderToLabel(rightPerson === 'chaochao' ? 'male' : 'female');
 
+  const loadAvatars = async () => {
+    if (!roomId) return;
+    const data = await supabaseGet<{ chaochao?: string; linlin?: string }>(roomId, 'avatars');
+    if (data) {
+      setAvatarChaochao(data.chaochao || '');
+      setAvatarLinlin(data.linlin || '');
+    }
+  };
+
+  const handleRefresh = async () => {
+    await Promise.all([
+      useKeyMomentStore.getState().loadFromFirebase(),
+      loadAvatars(),
+    ]);
+  };
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg pb-4">
       <div className="gradient-primary rounded-b-[2.5rem] px-6 pb-8 relative overflow-hidden safe-top" style={{ paddingTop: 'max(env(safe-area-inset-top, 14px), 14px)' }}>
         <div className="absolute top-6 right-8 text-white/15 text-4xl animate-float">✦</div>
@@ -252,6 +270,7 @@ export default function Home() {
       {showAddModal && <AddMomentModal onClose={() => setShowAddModal(false)} />}
       {editMoment && <EditMomentModal moment={editMoment} onClose={() => setEditMoment(null)} />}
     </div>
+    </PullToRefresh>
   );
 }
 

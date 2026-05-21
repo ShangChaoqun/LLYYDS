@@ -4,6 +4,7 @@ import { formatDate, formatDateTime, compressImage, getTodayStr } from '@/utils/
 import { genderToLabel } from '@/store/useRoomStore';
 import { Check, Plus, ImagePlus, Trash2, Calendar, X, ArrowUpDown } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
+import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Wishes() {
   const { wishes, completeWish, uncompleteWish, deleteWish } = useWishStore();
@@ -42,7 +43,12 @@ export default function Wishes() {
     setCompletePhoto('');
   };
 
+  const handleRefresh = async () => {
+    await useWishStore.getState().loadFromFirebase();
+  };
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg">
       <PageHeader
         title="愿望清单"
@@ -139,6 +145,7 @@ export default function Wishes() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }
 

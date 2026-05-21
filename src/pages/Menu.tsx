@@ -4,6 +4,7 @@ import { compressImage } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
 import { Plus, ImagePlus, X, Trash2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
+import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Menu() {
   const { menuItems, deleteMenuItem, updateMenuItem } = useMenuStore();
@@ -11,7 +12,12 @@ export default function Menu() {
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
 
+  const handleRefresh = async () => {
+    await useMenuStore.getState().loadFromFirebase();
+  };
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg">
       <PageHeader
         title="厨房菜单"
@@ -105,6 +111,7 @@ export default function Menu() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }
 

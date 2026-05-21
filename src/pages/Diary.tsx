@@ -2,15 +2,23 @@ import { useState } from 'react';
 import { useDiaryStore, DiaryEntry } from '@/store/useDiaryStore';
 import { compressImage, formatDateTime } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
-import { Plus, ImagePlus, X, Trash2, Pencil, BookOpen } from 'lucide-react';
+import { Plus, ImagePlus, X, Trash2, Pencil, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
+import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Diary() {
   const { entries, deleteEntry } = useDiaryStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editEntry, setEditEntry] = useState<DiaryEntry | null>(null);
+  const [viewEntry, setViewEntry] = useState<DiaryEntry | null>(null);
+  const [fullPhoto, setFullPhoto] = useState<string | null>(null);
+
+  const handleRefresh = async () => {
+    await useDiaryStore.getState().loadFromFirebase();
+  };
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg">
       <PageHeader
         title="恋爱日记"
@@ -33,7 +41,11 @@ export default function Diary() {
         ) : (
           <div className="space-y-3">
             {entries.map((entry) => (
-              <div key={entry.id} className="card-base animate-fade-in">
+              <div
+                key={entry.id}
+                className="card-base animate-fade-in cursor-pointer active:scale-[0.99] transition-transform"
+                onClick={() => setViewEntry(entry)}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     {entry.createdBy && (
@@ -45,7 +57,7 @@ export default function Diary() {
                       {formatDateTime(new Date(entry.updatedAt).toISOString())}
                     </span>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setEditEntry(entry)}
                       className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-500"
@@ -61,17 +73,23 @@ export default function Diary() {
                   </div>
                 </div>
                 {entry.content && (
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{entry.content}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap line-clamp-3">{entry.content}</p>
                 )}
                 {entry.photos.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {entry.photos.map((photo, i) => (
-                      <img
-                        key={i}
-                        src={photo}
-                        alt=""
-                        className="w-20 h-20 rounded-lg object-cover"
-                      />
+                    {entry.photos.slice(0, 3).map((photo, i) => (
+                      <div key={i} className="relative">
+                        <img
+                          src={photo}
+                          alt=""
+                          className="w-20 h-20 rounded-lg object-cover"
+                        />
+                        {i === 2 && entry.photos.length > 3 && (
+                          <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-sm font-medium">+{entry.photos.length - 3}</span>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -81,8 +99,112 @@ export default function Diary() {
         )}
       </div>
 
+      {viewEntry && (
+        <DiaryDetailView
+          entry={viewEntry}
+          onClose={() => setViewEntry(null)}
+          onPhotoClick={(photo) => setFullPhoto(photo)}
+        />
+      )}
+
+      {fullPhoto && (
+        <div
+          className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
+          onClick={() => setFullPhoto(null)}
+        >
+          <img
+            src={fullPhoto}
+            alt=""
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
       {showAddModal && <AddDiaryModal onClose={() => setShowAddModal(false)} />}
       {editEntry && <EditDiaryModal entry={editEntry} onClose={() => setEditEntry(null)} />}
+    </div>
+    </PullToRefresh>
+  );
+}
+
+function DiaryDetailView({
+  entry,
+  onClose,
+  onPhotoClick,
+}: {
+  entry: DiaryEntry;
+  onClose: () => void;
+  onPhotoClick: (photo: string) => void;
+}) {
+  const [photoIndex, setPhotoIndex] = useState(0);
+
+  const goPrev = () => setPhotoIndex((i) => Math.max(0, i - 1));
+  const goNext = () => setPhotoIndex((i) => Math.min(entry.photos.length - 1, i + 1));
+
+  return (
+    <div className="fixed inset-0 z-50 bg-bg animate-fade-in">
+      <div className="flex items-center justify-between px-4 h-12 border-b border-gray-100 bg-white">
+        <button onClick={onClose} className="text-gray-500">
+          <ChevronLeft size={22} />
+        </button>
+        <span className="text-sm font-semibold text-gray-700">日记详情</span>
+        <div className="w-6" />
+      </div>
+
+      <div className="overflow-y-auto" style={{ height: 'calc(100vh - 48px)' }}>
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            {entry.createdBy && (
+              <span className="inline-flex items-center gap-0.5 text-xs text-primary font-medium">
+                {entry.createdBy === 'male' ? '🧑' : '👩'} {genderToLabel(entry.createdBy)}
+              </span>
+            )}
+            <span className="text-xs text-gray-400">
+              {formatDateTime(new Date(entry.updatedAt).toISOString())}
+            </span>
+          </div>
+
+          {entry.content && (
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">{entry.content}</p>
+          )}
+
+          {entry.photos.length > 0 && (
+            <div className="relative">
+              <img
+                src={entry.photos[photoIndex]}
+                alt=""
+                className="w-full rounded-xl object-contain max-h-[60vh] bg-gray-50"
+                onClick={() => onPhotoClick(entry.photos[photoIndex])}
+              />
+              {entry.photos.length > 1 && (
+                <>
+                  {photoIndex > 0 && (
+                    <button
+                      onClick={goPrev}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 rounded-full flex items-center justify-center"
+                    >
+                      <ChevronLeft size={18} className="text-white" />
+                    </button>
+                  )}
+                  {photoIndex < entry.photos.length - 1 && (
+                    <button
+                      onClick={goNext}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 rounded-full flex items-center justify-center"
+                    >
+                      <ChevronRight size={18} className="text-white" />
+                    </button>
+                  )}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/40 rounded-full px-2.5 py-0.5">
+                    <span className="text-white text-xs">{photoIndex + 1} / {entry.photos.length}</span>
+                  </div>
+                </>
+              )}
+              <p className="text-[10px] text-gray-400 text-center mt-2">点击图片查看大图</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

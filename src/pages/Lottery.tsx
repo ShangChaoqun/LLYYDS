@@ -3,6 +3,7 @@ import { useLotteryStore } from '@/store/useLotteryStore';
 import { useAffinityStore, Person } from '@/store/useAffinityStore';
 import { Plus, X, RotateCw, Heart } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
+import PullToRefresh from '@/components/PullToRefresh';
 
 const WHEEL_COLORS = [
   '#FF6B8A', '#B088F9', '#6EC6FF', '#FFD93D',
@@ -28,6 +29,10 @@ export default function Lottery() {
   const [showManager, setShowManager] = useState(false);
   const [activePerson, setActivePerson] = useState<Person>('linlin');
   const [showCostConfirm, setShowCostConfirm] = useState(false);
+
+  const handleRefresh = async () => {
+    await useLotteryStore.getState().loadFromFirebase();
+  };
 
   const items = itemsMap[activePerson];
 
@@ -131,6 +136,7 @@ export default function Lottery() {
   };
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg">
       <PageHeader
         title="幸运抽奖"
@@ -265,5 +271,6 @@ export default function Lottery() {
         )}
       </div>
     </div>
+    </PullToRefresh>
   );
 }
