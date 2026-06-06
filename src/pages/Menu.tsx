@@ -47,7 +47,8 @@ export default function Menu() {
                     <img
                       src={item.photo}
                       alt={item.name}
-                      className="w-full h-full object-cover cursor-pointer"
+                      loading="lazy"
+                      className="w-full h-full object-cover cursor-pointer bg-gray-100"
                       onClick={() => setViewerPhotos({ photos: [item.photo], index: 0 })}
                     />
                     <div className="absolute top-2 right-2">

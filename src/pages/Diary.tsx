@@ -95,7 +95,8 @@ export default function Diary() {
                         <img
                           src={photo}
                           alt=""
-                          className="w-20 h-20 rounded-lg object-cover"
+                          loading="lazy"
+                          className="w-20 h-20 rounded-lg object-cover bg-gray-100"
                         />
                         {i === 2 && entry.photos.length > 3 && (
                           <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
@@ -187,7 +188,8 @@ function DiaryDetailView({
                   key={i}
                   src={photo}
                   alt=""
-                  className="w-full aspect-square rounded-lg object-cover cursor-pointer"
+                  loading="lazy"
+                  className="w-full aspect-square rounded-lg object-cover cursor-pointer bg-gray-100"
                   onClick={() => onPhotoClick(entry.photos, i)}
                 />
               ))}

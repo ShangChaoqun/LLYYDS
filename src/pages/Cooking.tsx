@@ -105,7 +105,8 @@ function CookingCard({
                 key={i}
                 src={photo}
                 alt=""
-                className="w-16 h-16 rounded-lg object-cover"
+                loading="lazy"
+                className="w-16 h-16 rounded-lg object-cover bg-gray-100"
                 onClick={(e) => { e.stopPropagation(); onViewPhoto(record.photos, i); }}
               />
             ))}
