@@ -30,74 +30,23 @@ interface WishState {
   wishes: Wish[];
   photos: WishPhotos;
   loaded: boolean;
-  photosLoaded: boolean;
   loadFromFirebase: () => void;
-  loadPhotos: () => void;
   subscribeToFirebase: () => () => void;
   addWish: (wish: Omit<Wish, 'id' | 'completed' | 'completedAt' | 'hasCompletedPhoto' | 'createdBy' | 'createdAt' | 'hasPhoto'> & { photo?: string }) => void;
   completeWish: (id: string, completedPhoto?: string) => void;
   uncompleteWish: (id: string) => void;
 }
 
-// Migrate old data format (wishes with photo/completedPhoto string fields inline) to new format
-async function migrateOldData(roomId: string): Promise<{ wishes: Wish[]; photos: WishPhotos } | null> {
-  const oldData = await supabaseGet<any[]>(roomId, 'wishes');
-  if (!oldData || oldData.length === 0) return null;
-
-  const first = oldData[0];
-  // Check old format: has 'photo' as a string property (not 'hasPhoto')
-  if (!first || !('photo' in first) || typeof first.photo !== 'string') return null;
-
-  const wishes: Wish[] = [];
-  const photos: WishPhotos = {};
-
-  for (const old of oldData) {
-    const hasPhoto = !!(old.photo && old.photo.length > 0);
-    const hasCompletedPhoto = !!(old.completedPhoto && old.completedPhoto.length > 0);
-    wishes.push({
-      id: old.id,
-      title: old.title,
-      description: old.description || '',
-      hasPhoto,
-      dueDate: old.dueDate || '',
-      proposedAt: old.proposedAt || '',
-      completed: old.completed || false,
-      completedAt: old.completedAt || '',
-      hasCompletedPhoto,
-      createdBy: old.createdBy,
-      createdAt: old.createdAt,
-    });
-    const entry: any = {};
-    if (hasPhoto) {
-      entry.photo = old.photo;
-      entry.photoThumbnail = await generateThumbnail(old.photo);
-    }
-    if (hasCompletedPhoto) {
-      entry.completedPhoto = old.completedPhoto;
-      entry.completedPhotoThumbnail = await generateThumbnail(old.completedPhoto);
-    }
-    if (hasPhoto || hasCompletedPhoto) {
-      photos[old.id] = entry;
-    }
-  }
-
-  await supabaseSet(roomId, 'wishes', wishes);
-  await supabaseSet(roomId, 'wishPhotos', photos);
-  return { wishes, photos };
-}
-
 export const useWishStore = create<WishState>((set, get) => ({
   wishes: [],
   photos: {},
   loaded: false,
-  photosLoaded: false,
 
   loadFromFirebase: async () => {
     const roomId = getRoomId();
     if (!roomId) return;
 
-    // Try loading new format first
-    const data = await supabaseGet<Wish[]>(roomId, 'wishes');
+    const data = await supabaseGet<any[]>(roomId, 'wishes');
     if (!data || data.length === 0) {
       set({ wishes: [], loaded: true });
       return;
@@ -105,28 +54,53 @@ export const useWishStore = create<WishState>((set, get) => ({
 
     // Check if data is in old format (has 'photo' as string property)
     const first = data[0];
-    if (first && ('photo' in (first as any)) && typeof (first as any).photo === 'string') {
+    if (first && 'photo' in first && typeof first.photo === 'string') {
       // Old format - migrate
-      const migrated = await migrateOldData(roomId);
-      if (migrated) {
-        set({ wishes: migrated.wishes, photos: migrated.photos, loaded: true, photosLoaded: true });
-        return;
+      const wishes: Wish[] = [];
+      const photos: WishPhotos = {};
+
+      for (const old of data) {
+        const hasPhoto = !!(old.photo && old.photo.length > 0);
+        const hasCompletedPhoto = !!(old.completedPhoto && old.completedPhoto.length > 0);
+        wishes.push({
+          id: old.id,
+          title: old.title,
+          description: old.description || '',
+          hasPhoto,
+          dueDate: old.dueDate || '',
+          proposedAt: old.proposedAt || '',
+          completed: old.completed || false,
+          completedAt: old.completedAt || '',
+          hasCompletedPhoto,
+          createdBy: old.createdBy,
+          createdAt: old.createdAt,
+        });
+        const entry: any = {};
+        if (hasPhoto) {
+          entry.photo = old.photo;
+          entry.photoThumbnail = await generateThumbnail(old.photo);
+        }
+        if (hasCompletedPhoto) {
+          entry.completedPhoto = old.completedPhoto;
+          entry.completedPhotoThumbnail = await generateThumbnail(old.completedPhoto);
+        }
+        if (hasPhoto || hasCompletedPhoto) {
+          photos[old.id] = entry;
+        }
       }
+
+      await supabaseSet(roomId, 'wishes', wishes);
+      await supabaseSet(roomId, 'wishPhotos', photos);
+      set({ wishes, photos, loaded: true });
+      return;
     }
 
     // New format - wishes without inline photos
     set({ wishes: data, loaded: true });
-    // Load photos in background
-    get().loadPhotos();
-  },
-
-  loadPhotos: async () => {
-    const roomId = getRoomId();
-    if (!roomId) return;
-    const data = await supabaseGet<WishPhotos>(roomId, 'wishPhotos');
-    if (data) {
-      // Generate thumbnails for wishes that don't have them
-      const updated = { ...data };
+    // Load photos
+    const photoData = await supabaseGet<WishPhotos>(roomId, 'wishPhotos');
+    if (photoData) {
+      const updated = { ...photoData };
       let needsSave = false;
       for (const wishId of Object.keys(updated)) {
         const entry = updated[wishId];
@@ -139,12 +113,10 @@ export const useWishStore = create<WishState>((set, get) => ({
           needsSave = true;
         }
       }
-      set({ photos: updated, photosLoaded: true });
-      if (needsSave && roomId) {
+      set({ photos: updated });
+      if (needsSave) {
         supabaseSet(roomId, 'wishPhotos', updated);
       }
-    } else {
-      set({ photosLoaded: true });
     }
   },
 
@@ -155,7 +127,7 @@ export const useWishStore = create<WishState>((set, get) => ({
       set({ wishes: data || [], loaded: true });
     });
     const unsub2 = supabaseOn(roomId, 'wishPhotos', (data) => {
-      set({ photos: data || {}, photosLoaded: true });
+      set({ photos: data || {} });
     });
     return () => {
       unsub1();

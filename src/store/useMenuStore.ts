@@ -23,103 +23,74 @@ interface MenuState {
   menuItems: MenuItem[];
   photos: MenuPhotos;
   loaded: boolean;
-  photosLoaded: boolean;
   loadFromFirebase: () => void;
-  loadPhotos: () => void;
   subscribeToFirebase: () => () => void;
   addMenuItem: (item: { name: string; description: string; photo: string }) => void;
   updateMenuItem: (id: string, updates: Partial<Pick<MenuItem, 'description'>> & { photo?: string }) => void;
   getItemPhoto: (itemId: string) => { photo: string; thumbnail: string } | undefined;
 }
 
-// Migrate old data format (items with photo field inline) to new format
-async function migrateOldData(roomId: string): Promise<{ items: MenuItem[]; photos: MenuPhotos } | null> {
-  const oldData = await supabaseGet<any[]>(roomId, 'menuItems');
-  if (!oldData || oldData.length === 0) return null;
-  const first = oldData[0];
-  if (!first || typeof first.photo !== 'string' || !('photo' in first)) return null;
-  // Only migrate if photo field exists as string (old format)
-  if (!('hasPhoto' in first) && !('photo' in first)) return null;
-
-  const items: MenuItem[] = [];
-  const photos: MenuPhotos = {};
-
-  for (const old of oldData) {
-    const hasPhoto = !!(old.photo && typeof old.photo === 'string' && old.photo.length > 0);
-    items.push({
-      id: old.id,
-      name: old.name,
-      description: old.description || '',
-      hasPhoto,
-      createdBy: old.createdBy,
-      createdAt: old.createdAt,
-    });
-    if (hasPhoto) {
-      const thumbnail = await generateThumbnail(old.photo);
-      photos[old.id] = { photo: old.photo, thumbnail };
-    }
-  }
-
-  await supabaseSet(roomId, 'menuItems', items);
-  await supabaseSet(roomId, 'menuPhotos', photos);
-  return { items, photos };
-}
-
 export const useMenuStore = create<MenuState>((set, get) => ({
   menuItems: [],
   photos: {},
   loaded: false,
-  photosLoaded: false,
 
   loadFromFirebase: async () => {
     const roomId = getRoomId();
     if (!roomId) return;
 
-    // Try loading new format first
-    const data = await supabaseGet<MenuItem[]>(roomId, 'menuItems');
+    const data = await supabaseGet<any[]>(roomId, 'menuItems');
     if (!data || data.length === 0) {
       set({ menuItems: [], loaded: true });
       return;
     }
 
-    // Check if data is in old format (has photo as string)
+    // Check if data is in old format (has photo as string field)
     const firstItem = data[0];
-    if (firstItem && typeof (firstItem as any).photo === 'string') {
+    if (firstItem && typeof firstItem.photo === 'string') {
       // Old format - migrate
-      const migrated = await migrateOldData(roomId);
-      if (migrated) {
-        set({ menuItems: migrated.items, photos: migrated.photos, loaded: true, photosLoaded: true });
-        return;
+      const items: MenuItem[] = [];
+      const photos: MenuPhotos = {};
+
+      for (const old of data) {
+        const hasPhoto = !!(old.photo && old.photo.length > 0);
+        items.push({
+          id: old.id,
+          name: old.name,
+          description: old.description || '',
+          hasPhoto,
+          createdBy: old.createdBy,
+          createdAt: old.createdAt,
+        });
+        if (hasPhoto) {
+          const thumbnail = await generateThumbnail(old.photo);
+          photos[old.id] = { photo: old.photo, thumbnail };
+        }
       }
+
+      await supabaseSet(roomId, 'menuItems', items);
+      await supabaseSet(roomId, 'menuPhotos', photos);
+      set({ menuItems: items, photos, loaded: true });
+      return;
     }
 
-    // New format - items without photos
+    // New format - items without inline photos
     set({ menuItems: data, loaded: true });
-    // Load photos in background
-    get().loadPhotos();
-  },
-
-  loadPhotos: async () => {
-    const roomId = getRoomId();
-    if (!roomId) return;
-    const data = await supabaseGet<MenuPhotos>(roomId, 'menuPhotos');
-    if (data) {
-      // Generate thumbnails for items that don't have them
-      const updated = { ...data };
+    // Load photos
+    const photoData = await supabaseGet<MenuPhotos>(roomId, 'menuPhotos');
+    if (photoData) {
+      const updated = { ...photoData };
       let needsSave = false;
       for (const itemId of Object.keys(updated)) {
-        const itemPhotos = updated[itemId];
-        if (itemPhotos.photo && !itemPhotos.thumbnail) {
-          itemPhotos.thumbnail = await generateThumbnail(itemPhotos.photo);
+        if (updated[itemId].photo && !updated[itemId].thumbnail) {
+          updated[itemId].thumbnail = await generateThumbnail(updated[itemId].photo);
           needsSave = true;
         }
       }
-      set({ photos: updated, photosLoaded: true });
-      if (needsSave && roomId) {
+      set({ photos: updated });
+      if (needsSave) {
         supabaseSet(roomId, 'menuPhotos', updated);
       }
-    } else {
-      set({ photosLoaded: true });
     }
   },
 
@@ -130,7 +101,7 @@ export const useMenuStore = create<MenuState>((set, get) => ({
       set({ menuItems: data || [], loaded: true });
     });
     const unsub2 = supabaseOn(roomId, 'menuPhotos', (data) => {
-      set({ photos: data || {}, photosLoaded: true });
+      set({ photos: data || {} });
     });
     return () => {
       unsub1();
