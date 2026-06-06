@@ -103,15 +103,15 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
 
     const { entries } = get();
 
-    // Try loading old single-collection format first
+    // Try loading old single-collection format and migrate to per-entry
     const oldPhotos = await supabaseGet<DiaryPhotos>(roomId, 'diaryPhotos');
     if (oldPhotos && Object.keys(oldPhotos).length > 0) {
       // Migrate old single-collection to per-entry collections
       for (const entryId of Object.keys(oldPhotos)) {
         await supabaseSet(roomId, `diaryPhotos:${entryId}`, oldPhotos[entryId]);
       }
-      set({ photos: oldPhotos, photosLoading: false });
-      return;
+      // Clear old collection so next time we use per-entry loading
+      await supabaseSet(roomId, 'diaryPhotos', {});
     }
 
     // Load photos entry by entry, updating state after each one
