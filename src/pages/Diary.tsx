@@ -8,7 +8,7 @@ import PullToRefresh from '@/components/PullToRefresh';
 import ImageViewer from '@/components/ImageViewer';
 
 export default function Diary() {
-  const { entries } = useDiaryStore();
+  const { entries, photos, photosLoaded } = useDiaryStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editEntry, setEditEntry] = useState<DiaryEntry | null>(null);
   const [viewEntry, setViewEntry] = useState<DiaryEntry | null>(null);
@@ -57,58 +57,69 @@ export default function Diary() {
           </div>
         ) : (
           <div className="space-y-3">
-            {entries.map((entry) => (
-              <div
-                key={entry.id}
-                className="card-base animate-fade-in cursor-pointer active:scale-[0.99] transition-transform"
-                onClick={() => setViewEntry(entry)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {entry.createdBy && (
-                      <span className="inline-flex items-center gap-0.5 text-xs text-primary font-medium">
-                        {entry.createdBy === 'male' ? '🧑' : '👩'} {genderToLabel(entry.createdBy)}
+            {entries.map((entry) => {
+              const entryPhotos = photos[entry.id];
+              const thumbnails = entryPhotos?.thumbnails || [];
+              return (
+                <div
+                  key={entry.id}
+                  className="card-base animate-fade-in cursor-pointer active:scale-[0.99] transition-transform"
+                  onClick={() => setViewEntry(entry)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {entry.createdBy && (
+                        <span className="inline-flex items-center gap-0.5 text-xs text-primary font-medium">
+                          {entry.createdBy === 'male' ? '🧑' : '👩'} {genderToLabel(entry.createdBy)}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-400">
+                        {formatDateTime(new Date(entry.updatedAt).toISOString())}
                       </span>
+                    </div>
+                    {showEditor && (
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => setEditEntry(entry)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-500"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </div>
                     )}
-                    <span className="text-xs text-gray-400">
-                      {formatDateTime(new Date(entry.updatedAt).toISOString())}
-                    </span>
                   </div>
-                  {showEditor && (
-                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => setEditEntry(entry)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-500"
-                      >
-                        <Pencil size={14} />
-                      </button>
+                  {entry.content && (
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap line-clamp-3">{entry.content}</p>
+                  )}
+                  {entry.photoCount > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {thumbnails.length > 0 ? (
+                        thumbnails.slice(0, 3).map((thumb, i) => (
+                          <div key={i} className="relative">
+                            <img
+                              src={thumb}
+                              alt=""
+                              loading="lazy"
+                              className="w-20 h-20 rounded-lg object-cover bg-gray-100"
+                            />
+                            {i === 2 && entry.photoCount > 3 && (
+                              <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
+                                <span className="text-white text-sm font-medium">+{entry.photoCount - 3}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        // Photos not loaded yet, show placeholders
+                        Array.from({ length: Math.min(entry.photoCount, 3) }).map((_, i) => (
+                          <div key={i} className="w-20 h-20 rounded-lg bg-gray-100 animate-pulse" />
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
-                {entry.content && (
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap line-clamp-3">{entry.content}</p>
-                )}
-                {entry.photos.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {(entry.thumbnails.length > 0 ? entry.thumbnails : entry.photos).slice(0, 3).map((photo, i) => (
-                      <div key={i} className="relative">
-                        <img
-                          src={photo}
-                          alt=""
-                          loading="lazy"
-                          className="w-20 h-20 rounded-lg object-cover bg-gray-100"
-                        />
-                        {i === 2 && entry.photos.length > 3 && (
-                          <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-sm font-medium">+{entry.photos.length - 3}</span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -118,7 +129,7 @@ export default function Diary() {
           entry={viewEntry}
           onClose={() => setViewEntry(null)}
           onEdit={showEditor ? (entry: DiaryEntry) => setEditEntry(entry) : undefined}
-          onPhotoClick={(photos, index) => setViewerPhotos({ photos, index })}
+          onPhotoClick={(photoList, index) => setViewerPhotos({ photos: photoList, index })}
         />
       )}
 
@@ -148,6 +159,10 @@ function DiaryDetailView({
   onEdit?: (entry: DiaryEntry) => void;
   onPhotoClick: (photos: string[], index: number) => void;
 }) {
+  const entryPhotos = useDiaryStore((s) => s.photos[entry.id]);
+  const photos = entryPhotos?.photos || [];
+  const thumbnails = entryPhotos?.thumbnails || [];
+
   return (
     <div className="fixed inset-0 z-40 bg-bg animate-fade-in">
       <div className="flex items-center justify-between px-4 h-12 border-b border-gray-100 bg-white">
@@ -181,18 +196,24 @@ function DiaryDetailView({
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">{entry.content}</p>
           )}
 
-          {entry.photos.length > 0 && (
+          {entry.photoCount > 0 && (
             <div className="grid grid-cols-3 gap-2">
-              {(entry.thumbnails.length > 0 ? entry.thumbnails : entry.photos).map((photo, i) => (
-                <img
-                  key={i}
-                  src={photo}
-                  alt=""
-                  loading="lazy"
-                  className="w-full aspect-square rounded-lg object-cover cursor-pointer bg-gray-100"
-                  onClick={() => onPhotoClick(entry.photos, i)}
-                />
-              ))}
+              {thumbnails.length > 0 ? (
+                thumbnails.map((thumb, i) => (
+                  <img
+                    key={i}
+                    src={thumb}
+                    alt=""
+                    loading="lazy"
+                    className="w-full aspect-square rounded-lg object-cover cursor-pointer bg-gray-100"
+                    onClick={() => onPhotoClick(photos, i)}
+                  />
+                ))
+              ) : (
+                Array.from({ length: entry.photoCount }).map((_, i) => (
+                  <div key={i} className="w-full aspect-square rounded-lg bg-gray-100 animate-pulse" />
+                ))
+              )}
             </div>
           )}
         </div>
@@ -278,8 +299,9 @@ function AddDiaryModal({ onClose }: { onClose: () => void }) {
 }
 
 function EditDiaryModal({ entry, onClose }: { entry: DiaryEntry; onClose: () => void }) {
+  const entryPhotos = useDiaryStore((s) => s.photos[entry.id]);
   const [content, setContent] = useState(entry.content);
-  const [photos, setPhotos] = useState<string[]>(entry.photos);
+  const [photos, setPhotos] = useState<string[]>(entryPhotos?.photos || []);
   const updateEntry = useDiaryStore((s) => s.updateEntry);
 
   const handlePhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
