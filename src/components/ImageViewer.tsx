@@ -11,7 +11,8 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
   const [isZoomed, setIsZoomed] = useState(false);
   const [offset, setOffset] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  const lastTapRef = useRef<number>(0);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTapTimeRef = useRef<number>(0);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -23,7 +24,8 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
   const goTo = useCallback((index: number) => {
     if (index < 0 || index >= photos.length) return;
     setIsAnimating(true);
-    setOffset((index - currentIndex) * 100);
+    // Offset direction: to go to previous image, slide right (+100), to go to next, slide left (-100)
+    setOffset((currentIndex - index) * 100);
     setTimeout(() => {
       setCurrentIndex(index);
       setOffset(0);
@@ -52,10 +54,9 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
     if (!touchStartRef.current || isZoomed || isAnimating) return;
     const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
     const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
-    const deltaTime = Date.now() - touchStartRef.current.time;
 
     // Quick tap - let onClick handle it
-    if (deltaTime < 300 && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+    if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
       setOffset(0);
       touchStartRef.current = null;
       return;
@@ -78,18 +79,39 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
 
   const handleImageClick = useCallback(() => {
     const now = Date.now();
-    const timeSinceLastTap = now - lastTapRef.current;
 
-    if (timeSinceLastTap < 300) {
+    // Clear any pending single tap action
+    if (singleTapTimerRef.current) {
+      clearTimeout(singleTapTimerRef.current);
+      singleTapTimerRef.current = null;
+    }
+
+    // Double tap detection
+    if (now - lastTapTimeRef.current < 300) {
+      // Double tap - toggle zoom
+      lastTapTimeRef.current = 0;
       setIsZoomed((prev) => !prev);
-      lastTapRef.current = 0;
     } else {
-      lastTapRef.current = now;
-      if (!isZoomed) {
-        onClose();
-      }
+      // First tap - wait to see if second tap comes
+      lastTapTimeRef.current = now;
+      singleTapTimerRef.current = setTimeout(() => {
+        singleTapTimerRef.current = null;
+        // No second tap came - it's a single tap
+        if (!isZoomed) {
+          onClose();
+        }
+      }, 300);
     }
   }, [isZoomed, onClose]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleBgClick = useCallback((e: React.MouseEvent) => {
     if (e.target === containerRef.current) {
@@ -124,6 +146,7 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
       {/* Images */}
       {visibleIndices.map((i) => {
         const positionOffset = (i - currentIndex) * 100 + offset;
+        const isCurrentZoomed = isZoomed && i === currentIndex;
         return (
           <img
             key={i}
@@ -131,13 +154,16 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
             alt=""
             className="max-w-full object-contain absolute"
             style={{
-              maxHeight: isZoomed && i === currentIndex ? 'none' : '85vh',
-              transform: `translateX(${positionOffset}vw)`,
-              transition: isAnimating ? 'transform 0.3s ease-out' : offset === 0 ? 'transform 0.3s ease-out' : 'none',
-              cursor: isZoomed && i === currentIndex ? 'zoom-out' : 'zoom-in',
-              ...(isZoomed && i === currentIndex
-                ? { transform: `translateX(${positionOffset}vw) scale(2)`, transition: 'transform 0.2s ease-out' }
-                : {}),
+              maxHeight: isCurrentZoomed ? 'none' : '85vh',
+              transform: isCurrentZoomed
+                ? `translateX(${positionOffset}vw) scale(2)`
+                : `translateX(${positionOffset}vw)`,
+              transition: isAnimating
+                ? 'transform 0.3s ease-out'
+                : offset === 0
+                  ? 'transform 0.3s ease-out'
+                  : 'none',
+              cursor: isCurrentZoomed ? 'zoom-out' : 'zoom-in',
             }}
             onClick={(e) => {
               e.stopPropagation();
