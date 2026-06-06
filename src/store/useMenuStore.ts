@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
+import { uploadImage } from '@/lib/storage';
 import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
 import { generateThumbnail } from '@/utils/helpers';
 
@@ -67,8 +68,10 @@ export const useMenuStore = create<MenuState>((set, get) => ({
           createdAt: old.createdAt,
         });
         if (hasPhoto) {
-          const thumbnail = await generateThumbnail(old.photo);
-          photos[old.id] = { photo: old.photo, thumbnail };
+          const photoUrl = await uploadImage(old.photo, `menu/${old.id}/photo.jpg`);
+          const thumbBase64 = await generateThumbnail(old.photo, 200, 0.5);
+          const thumbUrl = await uploadImage(thumbBase64, `menu/${old.id}/photo_thumb.jpg`);
+          photos[old.id] = { photo: photoUrl, thumbnail: thumbUrl };
         }
       }
 
@@ -95,18 +98,7 @@ export const useMenuStore = create<MenuState>((set, get) => ({
 
     const photoData = await supabaseGet<MenuPhotos>(roomId, 'menuPhotos');
     if (photoData) {
-      const updated = { ...photoData };
-      let needsSave = false;
-      for (const itemId of Object.keys(updated)) {
-        if (updated[itemId].photo && !updated[itemId].thumbnail) {
-          updated[itemId].thumbnail = await generateThumbnail(updated[itemId].photo);
-          needsSave = true;
-        }
-      }
-      set({ photos: updated, photosLoading: false });
-      if (needsSave) {
-        supabaseSet(roomId, 'menuPhotos', updated);
-      }
+      set({ photos: photoData, photosLoading: false });
     } else {
       set({ photosLoading: false });
     }
@@ -133,7 +125,13 @@ export const useMenuStore = create<MenuState>((set, get) => ({
     const itemId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
     const hasPhoto = !!(item.photo && item.photo.length > 0);
-    const thumbnail = hasPhoto ? await generateThumbnail(item.photo) : '';
+    let photoUrl = '';
+    let thumbUrl = '';
+    if (hasPhoto) {
+      photoUrl = await uploadImage(item.photo, `menu/${itemId}/photo.jpg`);
+      const thumbBase64 = await generateThumbnail(item.photo, 200, 0.5);
+      thumbUrl = await uploadImage(thumbBase64, `menu/${itemId}/photo_thumb.jpg`);
+    }
 
     const newItem: MenuItem = {
       id: itemId,
@@ -146,7 +144,7 @@ export const useMenuStore = create<MenuState>((set, get) => ({
 
     const menuItems = [newItem, ...state.menuItems];
     const photos = hasPhoto
-      ? { ...state.photos, [itemId]: { photo: item.photo, thumbnail } }
+      ? { ...state.photos, [itemId]: { photo: photoUrl, thumbnail: thumbUrl } }
       : state.photos;
 
     set({ menuItems, photos });
@@ -171,8 +169,10 @@ export const useMenuStore = create<MenuState>((set, get) => ({
     let photos = state.photos;
     if (updates.photo !== undefined) {
       if (updates.photo) {
-        const thumbnail = await generateThumbnail(updates.photo);
-        photos = { ...photos, [id]: { photo: updates.photo, thumbnail } };
+        const photoUrl = await uploadImage(updates.photo, `menu/${id}/photo.jpg`);
+        const thumbBase64 = await generateThumbnail(updates.photo, 200, 0.5);
+        const thumbUrl = await uploadImage(thumbBase64, `menu/${id}/photo_thumb.jpg`);
+        photos = { ...photos, [id]: { photo: photoUrl, thumbnail: thumbUrl } };
       } else {
         const { [id]: _, ...rest } = photos;
         photos = rest;

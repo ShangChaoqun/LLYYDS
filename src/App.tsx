@@ -63,7 +63,17 @@ ALTER TABLE room_data ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public room_data"
   ON room_data FOR ALL
-  USING (true) WITH CHECK (true);`}</pre>
+  USING (true) WITH CHECK (true);
+
+-- 创建图片存储桶
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('images', 'images', true);
+
+-- 允许公开上传和读取图片
+CREATE POLICY "Public images"
+  ON storage.objects FOR ALL
+  USING (bucket_id = 'images')
+  WITH CHECK (bucket_id = 'images');`}</pre>
       </div>
     </div>
   );

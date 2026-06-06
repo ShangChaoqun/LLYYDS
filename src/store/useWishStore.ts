@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
+import { uploadImage } from '@/lib/storage';
 import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
 import { generateThumbnail } from '@/utils/helpers';
 
@@ -81,12 +82,14 @@ export const useWishStore = create<WishState>((set, get) => ({
         });
         const entry: any = {};
         if (hasPhoto) {
-          entry.photo = old.photo;
-          entry.photoThumbnail = await generateThumbnail(old.photo);
+          entry.photo = await uploadImage(old.photo, `wishes/${old.id}/photo.jpg`);
+          const thumbBase64 = await generateThumbnail(old.photo, 200, 0.5);
+          entry.photoThumbnail = await uploadImage(thumbBase64, `wishes/${old.id}/photo_thumb.jpg`);
         }
         if (hasCompletedPhoto) {
-          entry.completedPhoto = old.completedPhoto;
-          entry.completedPhotoThumbnail = await generateThumbnail(old.completedPhoto);
+          entry.completedPhoto = await uploadImage(old.completedPhoto, `wishes/${old.id}/completed.jpg`);
+          const thumbBase64 = await generateThumbnail(old.completedPhoto, 200, 0.5);
+          entry.completedPhotoThumbnail = await uploadImage(thumbBase64, `wishes/${old.id}/completed_thumb.jpg`);
         }
         if (hasPhoto || hasCompletedPhoto) {
           photos[old.id] = entry;
@@ -116,23 +119,7 @@ export const useWishStore = create<WishState>((set, get) => ({
 
     const photoData = await supabaseGet<WishPhotos>(roomId, 'wishPhotos');
     if (photoData) {
-      const updated = { ...photoData };
-      let needsSave = false;
-      for (const wishId of Object.keys(updated)) {
-        const entry = updated[wishId];
-        if (entry.photo && !entry.photoThumbnail) {
-          entry.photoThumbnail = await generateThumbnail(entry.photo);
-          needsSave = true;
-        }
-        if (entry.completedPhoto && !entry.completedPhotoThumbnail) {
-          entry.completedPhotoThumbnail = await generateThumbnail(entry.completedPhoto);
-          needsSave = true;
-        }
-      }
-      set({ photos: updated, photosLoading: false });
-      if (needsSave) {
-        supabaseSet(roomId, 'wishPhotos', updated);
-      }
+      set({ photos: photoData, photosLoading: false });
     } else {
       set({ photosLoading: false });
     }
@@ -177,10 +164,12 @@ export const useWishStore = create<WishState>((set, get) => ({
     let photos = { ...state.photos };
 
     if (hasPhoto) {
-      const thumbnail = await generateThumbnail(wish.photo!);
+      const photoUrl = await uploadImage(wish.photo!, `wishes/${wishId}/photo.jpg`);
+      const thumbBase64 = await generateThumbnail(wish.photo!, 200, 0.5);
+      const thumbUrl = await uploadImage(thumbBase64, `wishes/${wishId}/photo_thumb.jpg`);
       photos[wishId] = {
-        photo: wish.photo,
-        photoThumbnail: thumbnail,
+        photo: photoUrl,
+        photoThumbnail: thumbUrl,
       };
     }
 
@@ -203,13 +192,15 @@ export const useWishStore = create<WishState>((set, get) => ({
 
     let photos = { ...state.photos };
     if (hasCompletedPhoto) {
-      const thumbnail = await generateThumbnail(completedPhoto!);
+      const completedUrl = await uploadImage(completedPhoto!, `wishes/${id}/completed.jpg`);
+      const thumbBase64 = await generateThumbnail(completedPhoto!, 200, 0.5);
+      const completedThumbUrl = await uploadImage(thumbBase64, `wishes/${id}/completed_thumb.jpg`);
       photos = {
         ...photos,
         [id]: {
           ...photos[id],
-          completedPhoto,
-          completedPhotoThumbnail: thumbnail,
+          completedPhoto: completedUrl,
+          completedPhotoThumbnail: completedThumbUrl,
         },
       };
     }

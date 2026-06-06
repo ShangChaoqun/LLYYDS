@@ -161,7 +161,7 @@ function WishCard({
   onUncomplete,
 }: {
   wish: Wish;
-  photoData?: { photoThumbnail?: string; completedPhotoThumbnail?: string };
+  photoData?: { photo?: string; completedPhoto?: string };
   onComplete: () => void;
   onUncomplete: () => void;
 }) {
@@ -210,15 +210,15 @@ function WishCard({
           {(wish.hasPhoto || wish.hasCompletedPhoto) && (
             <div className="flex gap-2 mt-2">
               {wish.hasPhoto && !wish.completed && (
-                photoData?.photoThumbnail ? (
-                  <img src={photoData.photoThumbnail} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                photoData?.photo ? (
+                  <img src={photoData.photo} alt="" className="w-16 h-16 rounded-lg object-cover" />
                 ) : (
                   <div className="w-16 h-16 rounded-lg bg-gray-100 animate-pulse" />
                 )
               )}
               {wish.hasCompletedPhoto && wish.completed && (
-                photoData?.completedPhotoThumbnail ? (
-                  <img src={photoData.completedPhotoThumbnail} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                photoData?.completedPhoto ? (
+                  <img src={photoData.completedPhoto} alt="" className="w-16 h-16 rounded-lg object-cover" />
                 ) : (
                   <div className="w-16 h-16 rounded-lg bg-gray-100 animate-pulse" />
                 )

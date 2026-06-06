@@ -51,7 +51,7 @@ export default function Menu() {
                   <div className="relative aspect-[4/3]">
                     {photos[item.id] ? (
                       <img
-                        src={photos[item.id].thumbnail}
+                        src={photos[item.id].photo}
                         alt={item.name}
                         loading="lazy"
                         className="w-full h-full object-cover cursor-pointer bg-gray-100"

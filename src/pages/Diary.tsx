@@ -64,7 +64,7 @@ export default function Diary() {
           <div className="space-y-3">
             {entries.map((entry) => {
               const entryPhotos = photos[entry.id];
-              const thumbnails = entryPhotos?.thumbnails || [];
+              const entryPhotoUrls = entryPhotos?.photos || [];
               return (
                 <div
                   key={entry.id}
@@ -98,11 +98,11 @@ export default function Diary() {
                   )}
                   {entry.photoCount > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {thumbnails.length > 0 ? (
-                        thumbnails.slice(0, 3).map((thumb, i) => (
+                      {entryPhotoUrls.length > 0 ? (
+                        entryPhotoUrls.slice(0, 3).map((photo, i) => (
                           <div key={i} className="relative">
                             <img
-                              src={thumb}
+                              src={photo}
                               alt=""
                               loading="lazy"
                               className="w-20 h-20 rounded-lg object-cover bg-gray-100"
@@ -166,7 +166,6 @@ function DiaryDetailView({
 }) {
   const entryPhotos = useDiaryStore((s) => s.photos[entry.id]);
   const photos = entryPhotos?.photos || [];
-  const thumbnails = entryPhotos?.thumbnails || [];
 
   return (
     <div className="fixed inset-0 z-40 bg-bg animate-fade-in">
@@ -203,11 +202,11 @@ function DiaryDetailView({
 
           {entry.photoCount > 0 && (
             <div className="grid grid-cols-3 gap-2">
-              {thumbnails.length > 0 ? (
-                thumbnails.map((thumb, i) => (
+              {photos.length > 0 ? (
+                photos.map((photo, i) => (
                   <img
                     key={i}
-                    src={thumb}
+                    src={photo}
                     alt=""
                     loading="lazy"
                     className="w-full aspect-square rounded-lg object-cover cursor-pointer bg-gray-100"

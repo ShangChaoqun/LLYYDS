@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
+import { uploadImage } from '@/lib/storage';
 import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
 import { generateThumbnail } from '@/utils/helpers';
 
@@ -56,7 +57,17 @@ export const useCookingStore = create<CookingState>((set, get) => ({
 
       for (const old of data) {
         const photoArr: string[] = old.photos || [];
-        const thumbnails = await Promise.all(photoArr.map((p: string) => generateThumbnail(p)));
+        const uploadedPhotos: string[] = [];
+        const uploadedThumbnails: string[] = [];
+
+        for (let i = 0; i < photoArr.length; i++) {
+          const photoUrl = await uploadImage(photoArr[i], `cooking/${old.id}/${i}.jpg`);
+          const thumbBase64 = await generateThumbnail(photoArr[i], 200, 0.5);
+          const thumbUrl = await uploadImage(thumbBase64, `cooking/${old.id}/${i}_thumb.jpg`);
+          uploadedPhotos.push(photoUrl);
+          uploadedThumbnails.push(thumbUrl);
+        }
+
         records.push({
           id: old.id,
           date: old.date || '',
@@ -66,7 +77,7 @@ export const useCookingStore = create<CookingState>((set, get) => ({
           createdAt: old.createdAt,
         });
         if (photoArr.length > 0) {
-          photos[old.id] = { photos: photoArr, thumbnails };
+          photos[old.id] = { photos: uploadedPhotos, thumbnails: uploadedThumbnails };
         }
       }
 
@@ -93,19 +104,7 @@ export const useCookingStore = create<CookingState>((set, get) => ({
 
     const photoData = await supabaseGet<CookingPhotos>(roomId, 'cookingPhotos');
     if (photoData) {
-      const updated = { ...photoData };
-      let needsSave = false;
-      for (const recordId of Object.keys(updated)) {
-        const rp = updated[recordId];
-        if (rp.photos.length > 0 && (!rp.thumbnails || rp.thumbnails.length === 0)) {
-          rp.thumbnails = await Promise.all(rp.photos.map((p) => generateThumbnail(p)));
-          needsSave = true;
-        }
-      }
-      set({ photos: updated, photosLoading: false });
-      if (needsSave) {
-        supabaseSet(roomId, 'cookingPhotos', updated);
-      }
+      set({ photos: photoData, photosLoading: false });
     } else {
       set({ photosLoading: false });
     }
@@ -131,9 +130,16 @@ export const useCookingStore = create<CookingState>((set, get) => ({
     const gender = useRoomStore.getState().gender || 'male';
     const recordId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
-    const thumbnails = await Promise.all(
-      record.photos.map((photo) => generateThumbnail(photo))
-    );
+    const uploadedPhotos: string[] = [];
+    const uploadedThumbnails: string[] = [];
+
+    for (let i = 0; i < record.photos.length; i++) {
+      const photoUrl = await uploadImage(record.photos[i], `cooking/${recordId}/${i}.jpg`);
+      const thumbBase64 = await generateThumbnail(record.photos[i], 200, 0.5);
+      const thumbUrl = await uploadImage(thumbBase64, `cooking/${recordId}/${i}_thumb.jpg`);
+      uploadedPhotos.push(photoUrl);
+      uploadedThumbnails.push(thumbUrl);
+    }
 
     const newRecord: CookingRecord = {
       id: recordId,
@@ -147,7 +153,7 @@ export const useCookingStore = create<CookingState>((set, get) => ({
     const records = [newRecord, ...state.records];
     const photos = {
       ...state.photos,
-      ...(record.photos.length > 0 ? { [recordId]: { photos: record.photos, thumbnails } } : {}),
+      ...(record.photos.length > 0 ? { [recordId]: { photos: uploadedPhotos, thumbnails: uploadedThumbnails } } : {}),
     };
 
     set({ records, photos });

@@ -103,23 +103,22 @@ function CookingCard({
   photoData?: { photos: string[]; thumbnails: string[] };
   onViewPhoto: (photos: string[], index: number) => void;
 }) {
-  const thumbnails = photoData?.thumbnails || [];
-  const fullPhotos = photoData?.photos || [];
+  const photoUrls = photoData?.photos || [];
 
   return (
     <div className="card-base animate-fade-in">
       <div className="flex gap-3">
         {record.photoCount > 0 && (
           <div className="flex gap-1.5 flex-shrink-0">
-            {thumbnails.length > 0 ? (
-              thumbnails.slice(0, 3).map((thumb, i) => (
+            {photoUrls.length > 0 ? (
+              photoUrls.slice(0, 3).map((photo, i) => (
                 <img
                   key={i}
-                  src={thumb}
+                  src={photo}
                   alt=""
                   loading="lazy"
                   className="w-16 h-16 rounded-lg object-cover bg-gray-100"
-                  onClick={(e) => { e.stopPropagation(); onViewPhoto(fullPhotos, i); }}
+                  onClick={(e) => { e.stopPropagation(); onViewPhoto(photoUrls, i); }}
                 />
               ))
             ) : (
