@@ -24,7 +24,6 @@ interface WishState {
   addWish: (wish: Omit<Wish, 'id' | 'completed' | 'completedAt' | 'completedPhoto' | 'createdBy' | 'createdAt'>) => void;
   completeWish: (id: string, completedPhoto?: string) => void;
   uncompleteWish: (id: string) => void;
-  deleteWish: (id: string) => void;
 }
 
 export const useWishStore = create<WishState>((set, get) => ({
@@ -81,14 +80,6 @@ export const useWishStore = create<WishState>((set, get) => ({
     const wishes = state.wishes.map((w) =>
       w.id === id ? { ...w, completed: false, completedAt: '', completedPhoto: '' } : w
     );
-    set({ wishes });
-    const roomId = getRoomId();
-    if (roomId) supabaseSet(roomId, 'wishes', wishes);
-  },
-
-  deleteWish: (id) => {
-    const state = get();
-    const wishes = state.wishes.filter((w) => w.id !== id);
     set({ wishes });
     const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'wishes', wishes);

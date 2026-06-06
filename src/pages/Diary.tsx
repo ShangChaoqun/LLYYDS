@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useDiaryStore, DiaryEntry } from '@/store/useDiaryStore';
 import { compressImage, formatDateTime } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
-import { Plus, ImagePlus, X, Trash2, Pencil, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ImagePlus, X, Pencil, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Diary() {
-  const { entries, deleteEntry } = useDiaryStore();
+  const { entries } = useDiaryStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editEntry, setEditEntry] = useState<DiaryEntry | null>(null);
   const [viewEntry, setViewEntry] = useState<DiaryEntry | null>(null);
@@ -63,12 +63,6 @@ export default function Diary() {
                       className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-500"
                     >
                       <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={() => deleteEntry(entry.id)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-red-400"
-                    >
-                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>

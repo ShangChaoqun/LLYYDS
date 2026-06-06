@@ -18,7 +18,6 @@ interface DiaryState {
   subscribeToFirebase: () => () => void;
   addEntry: (entry: Omit<DiaryEntry, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>) => void;
   updateEntry: (id: string, updates: Partial<Pick<DiaryEntry, 'content' | 'photos'>>) => void;
-  deleteEntry: (id: string) => void;
 }
 
 export const useDiaryStore = create<DiaryState>((set, get) => ({
@@ -62,14 +61,6 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     const entries = state.entries.map((e) =>
       e.id === id ? { ...e, ...updates, updatedAt: Date.now() } : e
     );
-    set({ entries });
-    const roomId = getRoomId();
-    if (roomId) supabaseSet(roomId, 'diaryEntries', entries);
-  },
-
-  deleteEntry: (id) => {
-    const state = get();
-    const entries = state.entries.filter((e) => e.id !== id);
     set({ entries });
     const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'diaryEntries', entries);

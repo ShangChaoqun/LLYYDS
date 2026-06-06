@@ -16,7 +16,6 @@ interface KeyMomentState {
   subscribeToFirebase: () => () => void;
   addMoment: (moment: Omit<KeyMoment, 'id' | 'createdBy'>) => void;
   updateMoment: (id: string, updates: Partial<Pick<KeyMoment, 'name' | 'date'>>) => void;
-  deleteMoment: (id: string) => void;
 }
 
 export const useKeyMomentStore = create<KeyMomentState>((set, get) => ({
@@ -55,14 +54,6 @@ export const useKeyMomentStore = create<KeyMomentState>((set, get) => ({
   updateMoment: (id, updates) => {
     const state = get();
     const moments = state.moments.map((m) => m.id === id ? { ...m, ...updates } : m);
-    set({ moments });
-    const roomId = getRoomId();
-    if (roomId) supabaseSet(roomId, 'keyMoments', moments);
-  },
-
-  deleteMoment: (id) => {
-    const state = get();
-    const moments = state.moments.filter((m) => m.id !== id);
     set({ moments });
     const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'keyMoments', moments);

@@ -18,7 +18,6 @@ interface BillState {
   loadFromFirebase: () => void;
   subscribeToFirebase: () => () => void;
   addRecord: (record: Omit<BillRecord, 'id' | 'createdBy' | 'createdAt'>) => void;
-  deleteRecord: (id: string) => void;
 }
 
 const CATEGORIES = [
@@ -63,14 +62,6 @@ export const useBillStore = create<BillState>((set, get) => ({
       createdAt: Date.now(),
     };
     const records = [newRecord, ...state.records];
-    set({ records });
-    const roomId = getRoomId();
-    if (roomId) supabaseSet(roomId, 'billRecords', records);
-  },
-
-  deleteRecord: (id) => {
-    const state = get();
-    const records = state.records.filter((r) => r.id !== id);
     set({ records });
     const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'billRecords', records);

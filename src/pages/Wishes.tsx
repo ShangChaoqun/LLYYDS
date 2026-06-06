@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useWishStore, Wish } from '@/store/useWishStore';
 import { formatDate, formatDateTime, compressImage, getTodayStr } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
-import { Check, Plus, ImagePlus, Trash2, Calendar, X, ArrowUpDown } from 'lucide-react';
+import { Check, Plus, ImagePlus, Calendar, X, ArrowUpDown } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Wishes() {
-  const { wishes, completeWish, uncompleteWish, deleteWish } = useWishStore();
+  const { wishes, completeWish, uncompleteWish } = useWishStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState<string | null>(null);
   const [completePhoto, setCompletePhoto] = useState('');
@@ -103,7 +103,6 @@ export default function Wishes() {
                 wish={wish}
                 onComplete={() => setShowCompleteModal(wish.id)}
                 onUncomplete={() => uncompleteWish(wish.id)}
-                onDelete={() => deleteWish(wish.id)}
               />
             ))}
           </div>
@@ -153,14 +152,11 @@ function WishCard({
   wish,
   onComplete,
   onUncomplete,
-  onDelete,
 }: {
   wish: Wish;
   onComplete: () => void;
   onUncomplete: () => void;
-  onDelete: () => void;
 }) {
-  const [showDelete, setShowDelete] = useState(false);
 
   return (
     <div className={`card-base animate-fade-in ${wish.completed ? 'opacity-70' : ''}`}>
@@ -214,23 +210,7 @@ function WishCard({
             </div>
           )}
         </div>
-        <button
-          onClick={() => setShowDelete(!showDelete)}
-          className="text-gray-300 hover:text-red-400 transition-colors p-1"
-        >
-          <Trash2 size={16} />
-        </button>
       </div>
-      {showDelete && (
-        <div className="flex justify-end mt-2 pt-2 border-t border-gray-100">
-          <button
-            onClick={() => { onDelete(); setShowDelete(false); }}
-            className="text-xs text-red-500 font-medium"
-          >
-            确认删除
-          </button>
-        </div>
-      )}
     </div>
   );
 }

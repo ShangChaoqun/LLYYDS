@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useMenuStore, MenuItem } from '@/store/useMenuStore';
 import { compressImage } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
-import { Plus, ImagePlus, X, Trash2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ImagePlus, X, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Menu() {
-  const { menuItems, deleteMenuItem, updateMenuItem } = useMenuStore();
+  const { menuItems, updateMenuItem } = useMenuStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
@@ -49,36 +49,24 @@ export default function Menu() {
                       className="w-full h-full object-cover cursor-pointer"
                       onClick={() => setViewPhoto(item.photo)}
                     />
-                    <div className="absolute top-2 right-2 flex gap-1">
+                    <div className="absolute top-2 right-2">
                       <button
                         onClick={() => setEditItem(item)}
                         className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center"
                       >
                         <Pencil size={14} className="text-blue-500" />
-                      </button>
-                      <button
-                        onClick={() => deleteMenuItem(item.id)}
-                        className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center"
-                      >
-                        <Trash2 size={14} className="text-red-400" />
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="relative aspect-[4/3] bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
                     <span className="text-3xl">🍽️</span>
-                    <div className="absolute top-2 right-2 flex gap-1">
+                    <div className="absolute top-2 right-2">
                       <button
                         onClick={() => setEditItem(item)}
                         className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center"
                       >
                         <Pencil size={14} className="text-blue-500" />
-                      </button>
-                      <button
-                        onClick={() => deleteMenuItem(item.id)}
-                        className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center"
-                      >
-                        <Trash2 size={14} className="text-red-400" />
                       </button>
                     </div>
                   </div>

@@ -17,7 +17,6 @@ interface CookingState {
   loadFromFirebase: () => void;
   subscribeToFirebase: () => () => void;
   addRecord: (record: Omit<CookingRecord, 'id' | 'createdBy' | 'createdAt'>) => void;
-  deleteRecord: (id: string) => void;
 }
 
 export const useCookingStore = create<CookingState>((set, get) => ({
@@ -49,14 +48,6 @@ export const useCookingStore = create<CookingState>((set, get) => ({
       createdAt: Date.now(),
     };
     const records = [newRecord, ...state.records];
-    set({ records });
-    const roomId = getRoomId();
-    if (roomId) supabaseSet(roomId, 'cookingRecords', records);
-  },
-
-  deleteRecord: (id) => {
-    const state = get();
-    const records = state.records.filter((r) => r.id !== id);
     set({ records });
     const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'cookingRecords', records);

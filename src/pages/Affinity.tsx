@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAffinityStore, AffinityEvent, Person } from '@/store/useAffinityStore';
 import { formatDateTime } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
-import { Plus, X, Trash2, Heart, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, X, Heart, TrendingUp, TrendingDown } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
 
@@ -12,7 +12,7 @@ const PERSON_CONFIG: Record<Person, { name: string; emoji: string; color: string
 };
 
 export default function Affinity() {
-  const { scores, events, addEvent, deleteEvent } = useAffinityStore();
+  const { scores, events, addEvent } = useAffinityStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [activePerson, setActivePerson] = useState<Person>('chaochao');
 
@@ -97,7 +97,7 @@ export default function Affinity() {
             {events
               .filter((e) => e.person === activePerson)
               .map((event) => (
-                <EventCard key={event.id} event={event} onDelete={() => deleteEvent(event.id)} />
+                <EventCard key={event.id} event={event} />
               ))}
           </div>
         )}
@@ -109,11 +109,9 @@ export default function Affinity() {
   );
 }
 
-function EventCard({ event, onDelete }: { event: AffinityEvent; onDelete: () => void }) {
-  const [showDelete, setShowDelete] = useState(false);
-
+function EventCard({ event }: { event: AffinityEvent }) {
   return (
-    <div className="card-base animate-fade-in" onClick={() => setShowDelete(!showDelete)}>
+    <div className="card-base animate-fade-in">
       <div className="flex items-center gap-3">
         <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
           event.change > 0 ? 'bg-green-50' : 'bg-red-50'
@@ -135,14 +133,6 @@ function EventCard({ event, onDelete }: { event: AffinityEvent; onDelete: () => 
           {event.change > 0 ? '+' : ''}{event.change}
         </span>
       </div>
-      {showDelete && (
-        <div className="flex justify-end mt-2 pt-2 border-t border-gray-100">
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="flex items-center gap-1 text-xs text-red-500 font-medium">
-            <Trash2 size={12} />删除
-          </button>
-        </div>
-      )}
     </div>
   );
 }

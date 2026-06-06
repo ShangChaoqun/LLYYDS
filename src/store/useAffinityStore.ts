@@ -25,7 +25,6 @@ interface AffinityState {
   loadFromFirebase: () => void;
   subscribeToFirebase: () => () => void;
   addEvent: (person: Person, description: string, change: number) => void;
-  deleteEvent: (id: string) => void;
 }
 
 const INITIAL_SCORES: AffinityScores = { chaochao: 60, linlin: 60 };
@@ -75,21 +74,6 @@ export const useAffinityStore = create<AffinityState>((set, get) => ({
     const newScore = Math.max(0, Math.min(100, state.scores[person] + change));
     const scores = { ...state.scores, [person]: newScore };
     const events = [newEvent, ...state.events];
-    set({ scores, events });
-    const roomId = getRoomId();
-    if (roomId) {
-      supabaseSet(roomId, 'affinityScores', scores);
-      supabaseSet(roomId, 'affinityEvents', events);
-    }
-  },
-
-  deleteEvent: (id) => {
-    const state = get();
-    const event = state.events.find((e) => e.id === id);
-    if (!event) return;
-    const newScore = Math.max(0, Math.min(100, state.scores[event.person] - event.change));
-    const scores = { ...state.scores, [event.person]: newScore };
-    const events = state.events.filter((e) => e.id !== id);
     set({ scores, events });
     const roomId = getRoomId();
     if (roomId) {

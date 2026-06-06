@@ -18,7 +18,6 @@ interface MenuState {
   subscribeToFirebase: () => () => void;
   addMenuItem: (item: Omit<MenuItem, 'id' | 'createdBy' | 'createdAt'>) => void;
   updateMenuItem: (id: string, updates: Partial<Pick<MenuItem, 'description' | 'photo'>>) => void;
-  deleteMenuItem: (id: string) => void;
 }
 
 export const useMenuStore = create<MenuState>((set, get) => ({
@@ -58,14 +57,6 @@ export const useMenuStore = create<MenuState>((set, get) => ({
   updateMenuItem: (id, updates) => {
     const state = get();
     const menuItems = state.menuItems.map((i) => i.id === id ? { ...i, ...updates } : i);
-    set({ menuItems });
-    const roomId = getRoomId();
-    if (roomId) supabaseSet(roomId, 'menuItems', menuItems);
-  },
-
-  deleteMenuItem: (id) => {
-    const state = get();
-    const menuItems = state.menuItems.filter((i) => i.id !== id);
     set({ menuItems });
     const roomId = getRoomId();
     if (roomId) supabaseSet(roomId, 'menuItems', menuItems);

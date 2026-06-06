@@ -3,15 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useKeyMomentStore, KeyMoment } from '@/store/useKeyMomentStore';
 import { useRoomStore, genderToLabel, getRoomId } from '@/store/useRoomStore';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
-import { Plus, X, Pencil, Trash2, Calendar, Heart } from 'lucide-react';
+import { Plus, X, Pencil, Calendar, Heart } from 'lucide-react';
 import { compressImage } from '@/utils/helpers';
 import PullToRefresh from '@/components/PullToRefresh';
 
 const TOGETHER_SINCE = new Date('2021-05-28');
+const TOGETHER_UNTIL = new Date('2026-06-04');
 
 function getDaysTogether(): number {
-  const now = new Date();
-  const diff = now.getTime() - TOGETHER_SINCE.getTime();
+  const diff = TOGETHER_UNTIL.getTime() - TOGETHER_SINCE.getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
@@ -45,7 +45,7 @@ const quickEntries = [
 
 export default function Home() {
   const navigate = useNavigate();
-  const { moments, addMoment, updateMoment, deleteMoment } = useKeyMomentStore();
+  const { moments, addMoment, updateMoment } = useKeyMomentStore();
   const { gender } = useRoomStore();
   const roomId = getRoomId();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -160,7 +160,7 @@ export default function Home() {
             <span className="text-white/95 text-lg font-semibold">我们在一起 {daysTogether} 天</span>
           </div>
           <p className="text-white/50 text-xs mt-0.5">
-            2021.05.28 — 至今
+            2021.05.28 — 2026.06.04
           </p>
         </div>
       </div>
@@ -229,9 +229,6 @@ export default function Home() {
                       </span>
                       <button onClick={() => setEditMoment(moment)} className="text-gray-300 hover:text-blue-400">
                         <Pencil size={11} />
-                      </button>
-                      <button onClick={() => deleteMoment(moment.id)} className="text-gray-300 hover:text-red-400">
-                        <Trash2 size={11} />
                       </button>
                     </div>
                   </div>

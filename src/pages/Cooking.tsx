@@ -7,7 +7,7 @@ import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Cooking() {
-  const { records, deleteRecord } = useCookingStore();
+  const { records } = useCookingStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewPhotos, setViewPhotos] = useState<{ photos: string[]; index: number } | null>(null);
 
@@ -63,7 +63,6 @@ export default function Cooking() {
                     <CookingCard
                       key={record.id}
                       record={record}
-                      onDelete={() => deleteRecord(record.id)}
                       onViewPhoto={(photos, index) => setViewPhotos({ photos, index })}
                     />
                   ))}
@@ -90,17 +89,13 @@ export default function Cooking() {
 
 function CookingCard({
   record,
-  onDelete,
   onViewPhoto,
 }: {
   record: CookingRecord;
-  onDelete: () => void;
   onViewPhoto: (photos: string[], index: number) => void;
 }) {
-  const [showDelete, setShowDelete] = useState(false);
-
   return (
-    <div className="card-base animate-fade-in" onClick={() => setShowDelete(!showDelete)}>
+    <div className="card-base animate-fade-in">
       <div className="flex gap-3">
         {record.photos.length > 0 && (
           <div className="flex gap-1.5 flex-shrink-0">
@@ -134,17 +129,6 @@ function CookingCard({
           )}
         </div>
       </div>
-      {showDelete && (
-        <div className="flex justify-end mt-2 pt-2 border-t border-gray-100">
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="flex items-center gap-1 text-xs text-red-500 font-medium"
-          >
-            <Trash2 size={12} />
-            删除记录
-          </button>
-        </div>
-      )}
     </div>
   );
 }

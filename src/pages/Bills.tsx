@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useBillStore, CATEGORIES } from '@/store/useBillStore';
 import { formatDate } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
-import { Plus, X, Trash2, BarChart3, Receipt } from 'lucide-react';
+import { Plus, X, BarChart3, Receipt } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Bills() {
-  const { records, deleteRecord } = useBillStore();
+  const { records } = useBillStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [filterMonth, setFilterMonth] = useState(() => {
@@ -135,9 +135,6 @@ export default function Bills() {
                               </div>
                               {record.note && <p className="text-[10px] text-gray-400 mt-0.5 truncate">{record.note}</p>}
                             </div>
-                            <button onClick={() => deleteRecord(record.id)} className="text-gray-300 hover:text-red-400 ml-1">
-                              <Trash2 size={13} />
-                            </button>
                           </div>
                         </div>
                       );
