@@ -1,20 +1,37 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useDiaryStore, DiaryEntry } from '@/store/useDiaryStore';
 import { compressImage, formatDateTime } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
-import { Plus, ImagePlus, X, Pencil, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ImagePlus, X, Pencil, BookOpen, ChevronLeft } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
+import ImageViewer from '@/components/ImageViewer';
 
 export default function Diary() {
   const { entries } = useDiaryStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editEntry, setEditEntry] = useState<DiaryEntry | null>(null);
   const [viewEntry, setViewEntry] = useState<DiaryEntry | null>(null);
-  const [fullPhoto, setFullPhoto] = useState<string | null>(null);
+  const [showEditor, setShowEditor] = useState(false);
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const [viewerPhotos, setViewerPhotos] = useState<{ photos: string[]; index: number } | null>(null);
 
   const handleRefresh = async () => {
     await useDiaryStore.getState().loadFromFirebase();
+  };
+
+  const handleSecretTap = () => {
+    tapCountRef.current += 1;
+    clearTimeout(tapTimerRef.current);
+    if (tapCountRef.current >= 10) {
+      tapCountRef.current = 0;
+      setShowEditor(true);
+    } else {
+      tapTimerRef.current = setTimeout(() => {
+        tapCountRef.current = 0;
+      }, 2000);
+    }
   };
 
   return (
@@ -57,14 +74,16 @@ export default function Diary() {
                       {formatDateTime(new Date(entry.updatedAt).toISOString())}
                     </span>
                   </div>
-                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => setEditEntry(entry)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-500"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                  </div>
+                  {showEditor && (
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setEditEntry(entry)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-500"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 {entry.content && (
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap line-clamp-3">{entry.content}</p>
@@ -97,22 +116,17 @@ export default function Diary() {
         <DiaryDetailView
           entry={viewEntry}
           onClose={() => setViewEntry(null)}
-          onPhotoClick={(photo) => setFullPhoto(photo)}
+          onEdit={showEditor ? (entry: DiaryEntry) => setEditEntry(entry) : undefined}
+          onPhotoClick={(photos, index) => setViewerPhotos({ photos, index })}
         />
       )}
 
-      {fullPhoto && (
-        <div
-          className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
-          onClick={() => setFullPhoto(null)}
-        >
-          <img
-            src={fullPhoto}
-            alt=""
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
+      {viewerPhotos && (
+        <ImageViewer
+          photos={viewerPhotos.photos}
+          initialIndex={viewerPhotos.index}
+          onClose={() => setViewerPhotos(null)}
+        />
       )}
 
       {showAddModal && <AddDiaryModal onClose={() => setShowAddModal(false)} />}
@@ -125,25 +139,28 @@ export default function Diary() {
 function DiaryDetailView({
   entry,
   onClose,
+  onEdit,
   onPhotoClick,
 }: {
   entry: DiaryEntry;
   onClose: () => void;
-  onPhotoClick: (photo: string) => void;
+  onEdit?: (entry: DiaryEntry) => void;
+  onPhotoClick: (photos: string[], index: number) => void;
 }) {
-  const [photoIndex, setPhotoIndex] = useState(0);
-
-  const goPrev = () => setPhotoIndex((i) => Math.max(0, i - 1));
-  const goNext = () => setPhotoIndex((i) => Math.min(entry.photos.length - 1, i + 1));
-
   return (
-    <div className="fixed inset-0 z-50 bg-bg animate-fade-in">
+    <div className="fixed inset-0 z-40 bg-bg animate-fade-in">
       <div className="flex items-center justify-between px-4 h-12 border-b border-gray-100 bg-white">
         <button onClick={onClose} className="text-gray-500">
           <ChevronLeft size={22} />
         </button>
         <span className="text-sm font-semibold text-gray-700">日记详情</span>
-        <div className="w-6" />
+        {onEdit ? (
+          <button onClick={() => onEdit(entry)} className="text-blue-500">
+            <Pencil size={18} />
+          </button>
+        ) : (
+          <div className="w-6" />
+        )}
       </div>
 
       <div className="overflow-y-auto" style={{ height: 'calc(100vh - 48px)' }}>
@@ -164,37 +181,16 @@ function DiaryDetailView({
           )}
 
           {entry.photos.length > 0 && (
-            <div className="relative">
-              <img
-                src={entry.photos[photoIndex]}
-                alt=""
-                className="w-full rounded-xl object-contain max-h-[60vh] bg-gray-50"
-                onClick={() => onPhotoClick(entry.photos[photoIndex])}
-              />
-              {entry.photos.length > 1 && (
-                <>
-                  {photoIndex > 0 && (
-                    <button
-                      onClick={goPrev}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 rounded-full flex items-center justify-center"
-                    >
-                      <ChevronLeft size={18} className="text-white" />
-                    </button>
-                  )}
-                  {photoIndex < entry.photos.length - 1 && (
-                    <button
-                      onClick={goNext}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 rounded-full flex items-center justify-center"
-                    >
-                      <ChevronRight size={18} className="text-white" />
-                    </button>
-                  )}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/40 rounded-full px-2.5 py-0.5">
-                    <span className="text-white text-xs">{photoIndex + 1} / {entry.photos.length}</span>
-                  </div>
-                </>
-              )}
-              <p className="text-[10px] text-gray-400 text-center mt-2">点击图片查看大图</p>
+            <div className="grid grid-cols-3 gap-2">
+              {entry.photos.map((photo, i) => (
+                <img
+                  key={i}
+                  src={photo}
+                  alt=""
+                  className="w-full aspect-square rounded-lg object-cover cursor-pointer"
+                  onClick={() => onPhotoClick(entry.photos, i)}
+                />
+              ))}
             </div>
           )}
         </div>

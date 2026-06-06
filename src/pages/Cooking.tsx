@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useCookingStore, CookingRecord } from '@/store/useCookingStore';
 import { compressImage, formatDate } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
-import { Plus, ImagePlus, X, Trash2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ImagePlus, X, Clock } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
+import ImageViewer from '@/components/ImageViewer';
 
 export default function Cooking() {
   const { records } = useCookingStore();
@@ -76,7 +77,7 @@ export default function Cooking() {
       {showAddModal && <AddCookingModal onClose={() => setShowAddModal(false)} />}
 
       {viewPhotos && (
-        <PhotoViewer
+        <ImageViewer
           photos={viewPhotos.photos}
           initialIndex={viewPhotos.index}
           onClose={() => setViewPhotos(null)}
@@ -128,53 +129,6 @@ function CookingCard({
             </span>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function PhotoViewer({
-  photos,
-  initialIndex,
-  onClose,
-}: {
-  photos: string[];
-  initialIndex: number;
-  onClose: () => void;
-}) {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
-
-  const goPrev = () => setCurrentIndex(Math.max(0, currentIndex - 1));
-  const goNext = () => setCurrentIndex(Math.min(photos.length - 1, currentIndex + 1));
-
-  return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="relative w-full h-full flex items-center justify-center">
-        <img
-          src={photos[currentIndex]}
-          alt=""
-          className="max-w-full max-h-[80vh] object-contain cursor-pointer"
-          onClick={onClose}
-        />
-        <div className="absolute top-4 right-4 flex items-center gap-3">
-          <span className="text-white/80 text-sm">{currentIndex + 1} / {photos.length}</span>
-        </div>
-        {currentIndex > 0 && (
-          <button
-            onClick={goPrev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
-          >
-            <ChevronLeft size={24} className="text-white" />
-          </button>
-        )}
-        {currentIndex < photos.length - 1 && (
-          <button
-            onClick={goNext}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
-          >
-            <ChevronRight size={24} className="text-white" />
-          </button>
-        )}
       </div>
     </div>
   );

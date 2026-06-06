@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { useMenuStore, MenuItem } from '@/store/useMenuStore';
 import { compressImage } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
-import { Plus, ImagePlus, X, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ImagePlus, X, Pencil } from 'lucide-react';
 import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
+import ImageViewer from '@/components/ImageViewer';
 
 export default function Menu() {
   const { menuItems, updateMenuItem } = useMenuStore();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [viewPhoto, setViewPhoto] = useState<string | null>(null);
+  const [viewerPhotos, setViewerPhotos] = useState<{ photos: string[]; index: number } | null>(null);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
 
   const handleRefresh = async () => {
@@ -47,7 +48,7 @@ export default function Menu() {
                       src={item.photo}
                       alt={item.name}
                       className="w-full h-full object-cover cursor-pointer"
-                      onClick={() => setViewPhoto(item.photo)}
+                      onClick={() => setViewerPhotos({ photos: [item.photo], index: 0 })}
                     />
                     <div className="absolute top-2 right-2">
                       <button
@@ -93,10 +94,12 @@ export default function Menu() {
       {showAddModal && <AddMenuModal onClose={() => setShowAddModal(false)} />}
       {editItem && <EditMenuModal item={editItem} onClose={() => setEditItem(null)} />}
 
-      {viewPhoto && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center" onClick={() => setViewPhoto(null)}>
-          <img src={viewPhoto} alt="" className="max-w-full max-h-[85vh] object-contain" onClick={() => setViewPhoto(null)} />
-        </div>
+      {viewerPhotos && (
+        <ImageViewer
+          photos={viewerPhotos.photos}
+          initialIndex={viewerPhotos.index}
+          onClose={() => setViewerPhotos(null)}
+        />
       )}
     </div>
     </PullToRefresh>
