@@ -90,7 +90,7 @@ export default function Diary() {
                 )}
                 {entry.photos.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {entry.photos.slice(0, 3).map((photo, i) => (
+                    {(entry.thumbnails.length > 0 ? entry.thumbnails : entry.photos).slice(0, 3).map((photo, i) => (
                       <div key={i} className="relative">
                         <img
                           src={photo}
@@ -183,7 +183,7 @@ function DiaryDetailView({
 
           {entry.photos.length > 0 && (
             <div className="grid grid-cols-3 gap-2">
-              {entry.photos.map((photo, i) => (
+              {(entry.thumbnails.length > 0 ? entry.thumbnails : entry.photos).map((photo, i) => (
                 <img
                   key={i}
                   src={photo}

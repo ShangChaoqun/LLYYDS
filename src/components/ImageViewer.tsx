@@ -9,47 +9,54 @@ interface ImageViewerProps {
 export default function ImageViewer({ photos, initialIndex = 0, onClose }: ImageViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isZoomed, setIsZoomed] = useState(false);
-  const [translateX, setTranslateX] = useState(-initialIndex * 100);
-  const [isDragging, setIsDragging] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
   const lastTapRef = useRef<number>(0);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync translateX with currentIndex when not dragging
+  // Reset offset when index changes
   useEffect(() => {
-    if (!isDragging) {
-      setTranslateX(-currentIndex * 100);
-    }
-  }, [currentIndex, isDragging]);
+    setOffset(0);
+  }, [currentIndex]);
+
+  const goTo = useCallback((index: number) => {
+    if (index < 0 || index >= photos.length) return;
+    setIsAnimating(true);
+    setOffset((index - currentIndex) * 100);
+    setTimeout(() => {
+      setCurrentIndex(index);
+      setOffset(0);
+      setIsAnimating(false);
+    }, 300);
+  }, [currentIndex, photos.length]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (isZoomed) return;
+    if (isZoomed || isAnimating) return;
     touchStartRef.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
       time: Date.now(),
     };
-    setIsDragging(true);
-  }, [isZoomed]);
+  }, [isZoomed, isAnimating]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current || isZoomed) return;
+    if (!touchStartRef.current || isZoomed || isAnimating) return;
     const deltaX = e.touches[0].clientX - touchStartRef.current.x;
     const windowWidth = window.innerWidth;
-    const offsetPercent = (deltaX / windowWidth) * 100;
-    setTranslateX(-currentIndex * 100 + offsetPercent);
-  }, [currentIndex, isZoomed]);
+    const percent = (deltaX / windowWidth) * 100;
+    setOffset(percent);
+  }, [isZoomed, isAnimating]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current || isZoomed) return;
+    if (!touchStartRef.current || isZoomed || isAnimating) return;
     const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
     const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
     const deltaTime = Date.now() - touchStartRef.current.time;
 
-    setIsDragging(false);
-
-    // Quick tap (less than 300ms, small movement) - let onClick handle it
+    // Quick tap - let onClick handle it
     if (deltaTime < 300 && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+      setOffset(0);
       touchStartRef.current = null;
       return;
     }
@@ -57,19 +64,17 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
     // Swipe detection
     if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
       if (deltaX > 0 && currentIndex > 0) {
-        setCurrentIndex(currentIndex - 1);
+        goTo(currentIndex - 1);
       } else if (deltaX < 0 && currentIndex < photos.length - 1) {
-        setCurrentIndex(currentIndex + 1);
+        goTo(currentIndex + 1);
       } else {
-        // Bounce back at edges
-        setTranslateX(-currentIndex * 100);
+        setOffset(0);
       }
     } else {
-      // Not enough swipe distance, bounce back
-      setTranslateX(-currentIndex * 100);
+      setOffset(0);
     }
     touchStartRef.current = null;
-  }, [currentIndex, photos.length, isZoomed]);
+  }, [currentIndex, photos.length, isZoomed, isAnimating, goTo]);
 
   const handleImageClick = useCallback(() => {
     const now = Date.now();
@@ -92,6 +97,11 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
     }
   }, [onClose]);
 
+  // Determine which images to render (current + adjacent)
+  const visibleIndices = [currentIndex - 1, currentIndex, currentIndex + 1].filter(
+    (i) => i >= 0 && i < photos.length
+  );
+
   return (
     <div
       ref={containerRef}
@@ -111,46 +121,36 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
         </div>
       )}
 
-      {/* Sliding container */}
-      <div
-        className="flex h-full items-center"
-        style={{
-          width: `${photos.length * 100}%`,
-          transform: `translateX(${translateX / photos.length}%)`,
-          transition: isDragging ? 'none' : 'transform 0.3s ease-out',
-        }}
-      >
-        {photos.map((photo, i) => (
-          <div
+      {/* Images */}
+      {visibleIndices.map((i) => {
+        const positionOffset = (i - currentIndex) * 100 + offset;
+        return (
+          <img
             key={i}
-            className="h-full flex items-center justify-center"
-            style={{ width: `${100 / photos.length}%` }}
-          >
-            <img
-              src={photo}
-              alt=""
-              className={`max-w-full object-contain ${
-                isZoomed && i === currentIndex ? 'cursor-zoom-out' : 'cursor-zoom-in'
-              }`}
-              style={{
-                maxHeight: isZoomed && i === currentIndex ? 'none' : '85vh',
-                transform: isZoomed && i === currentIndex ? 'scale(2)' : 'scale(1)',
-                transformOrigin: 'center center',
-                transition: 'transform 0.2s ease-out',
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (i === currentIndex) handleImageClick();
-              }}
-              draggable={false}
-            />
-          </div>
-        ))}
-      </div>
+            src={photos[i]}
+            alt=""
+            className="max-w-full object-contain absolute"
+            style={{
+              maxHeight: isZoomed && i === currentIndex ? 'none' : '85vh',
+              transform: `translateX(${positionOffset}vw)`,
+              transition: isAnimating ? 'transform 0.3s ease-out' : offset === 0 ? 'transform 0.3s ease-out' : 'none',
+              cursor: isZoomed && i === currentIndex ? 'zoom-out' : 'zoom-in',
+              ...(isZoomed && i === currentIndex
+                ? { transform: `translateX(${positionOffset}vw) scale(2)`, transition: 'transform 0.2s ease-out' }
+                : {}),
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (i === currentIndex) handleImageClick();
+            }}
+            draggable={false}
+          />
+        );
+      })}
 
       {/* Hint */}
       {!isZoomed && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/40 rounded-full px-3 py-1">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/40 rounded-full px-3 py-1 z-10">
           <span className="text-white/70 text-[10px]">
             {photos.length > 1 ? '左右滑动切换 · 双击放大 · 单击退出' : '双击放大 · 单击退出'}
           </span>
@@ -158,7 +158,7 @@ export default function ImageViewer({ photos, initialIndex = 0, onClose }: Image
       )}
 
       {isZoomed && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/40 rounded-full px-3 py-1">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/40 rounded-full px-3 py-1 z-10">
           <span className="text-white/70 text-[10px]">双击缩小</span>
         </div>
       )}

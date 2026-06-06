@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { supabaseGet, supabaseSet, supabaseOn } from '@/lib/supabaseSync';
 import { useRoomStore, Gender, getRoomId } from '@/store/useRoomStore';
+import { generateThumbnail } from '@/utils/helpers';
 
 export interface DiaryEntry {
   id: string;
   content: string;
   photos: string[];
+  thumbnails: string[];
   createdBy: Gender;
   createdAt: number;
   updatedAt: number;
@@ -16,8 +18,8 @@ interface DiaryState {
   loaded: boolean;
   loadFromFirebase: () => void;
   subscribeToFirebase: () => () => void;
-  addEntry: (entry: Omit<DiaryEntry, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>) => void;
-  updateEntry: (id: string, updates: Partial<Pick<DiaryEntry, 'content' | 'photos'>>) => void;
+  addEntry: (entry: Omit<DiaryEntry, 'id' | 'createdBy' | 'createdAt' | 'updatedAt' | 'thumbnails'> & { photos: string[] }) => void;
+  updateEntry: (id: string, updates: Partial<Pick<DiaryEntry, 'content' | 'photos' | 'thumbnails'>>) => void;
 }
 
 export const useDiaryStore = create<DiaryState>((set, get) => ({
@@ -28,7 +30,26 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     const roomId = getRoomId();
     if (!roomId) return;
     const data = await supabaseGet<DiaryEntry[]>(roomId, 'diaryEntries');
-    set({ entries: data || [], loaded: true });
+    const entries = data || [];
+    // Generate thumbnails for entries that don't have them
+    for (const entry of entries) {
+      if (!entry.thumbnails || entry.thumbnails.length === 0) {
+        if (entry.photos.length > 0) {
+          const thumbnails = await Promise.all(
+            entry.photos.map((photo) => generateThumbnail(photo))
+          );
+          entry.thumbnails = thumbnails;
+        } else {
+          entry.thumbnails = [];
+        }
+      }
+    }
+    // Save back if any thumbnails were generated
+    const needsSave = entries.some((e) => !e.thumbnails || e.thumbnails.length === 0);
+    if (needsSave && roomId) {
+      supabaseSet(roomId, 'diaryEntries', entries);
+    }
+    set({ entries, loaded: true });
   },
 
   subscribeToFirebase: () => {
@@ -39,12 +60,16 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     });
   },
 
-  addEntry: (entry) => {
+  addEntry: async (entry) => {
     const state = get();
     const now = Date.now();
     const gender = useRoomStore.getState().gender || 'male';
+    const thumbnails = await Promise.all(
+      entry.photos.map((photo) => generateThumbnail(photo))
+    );
     const newEntry: DiaryEntry = {
       ...entry,
+      thumbnails,
       id: now.toString() + Math.random().toString(36).substr(2, 9),
       createdBy: gender as Gender,
       createdAt: now,
@@ -56,10 +81,16 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     if (roomId) supabaseSet(roomId, 'diaryEntries', entries);
   },
 
-  updateEntry: (id, updates) => {
+  updateEntry: async (id, updates) => {
     const state = get();
+    let thumbnails = updates.thumbnails;
+    if (updates.photos && !thumbnails) {
+      thumbnails = await Promise.all(
+        updates.photos.map((photo) => generateThumbnail(photo))
+      );
+    }
     const entries = state.entries.map((e) =>
-      e.id === id ? { ...e, ...updates, updatedAt: Date.now() } : e
+      e.id === id ? { ...e, ...updates, ...(thumbnails ? { thumbnails } : {}), updatedAt: Date.now() } : e
     );
     set({ entries });
     const roomId = getRoomId();
