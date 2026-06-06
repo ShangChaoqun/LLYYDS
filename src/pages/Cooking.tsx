@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCookingStore, CookingRecord } from '@/store/useCookingStore';
 import { compressImage, formatDate } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
@@ -11,6 +11,11 @@ export default function Cooking() {
   const { records, photos } = useCookingStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewPhotos, setViewPhotos] = useState<{ photos: string[]; index: number } | null>(null);
+
+  // Load photos when page is visited
+  useEffect(() => {
+    useCookingStore.getState().loadPhotos();
+  }, []);
 
   const handleRefresh = async () => {
     await useCookingStore.getState().loadFromFirebase();

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useDiaryStore, DiaryEntry } from '@/store/useDiaryStore';
 import { compressImage, formatDateTime } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
@@ -16,6 +16,11 @@ export default function Diary() {
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [viewerPhotos, setViewerPhotos] = useState<{ photos: string[]; index: number } | null>(null);
+
+  // Load photos when page is visited
+  useEffect(() => {
+    useDiaryStore.getState().loadPhotosProgressive();
+  }, []);
 
   const handleRefresh = async () => {
     await useDiaryStore.getState().loadFromFirebase();

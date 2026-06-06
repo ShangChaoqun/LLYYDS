@@ -23,7 +23,9 @@ interface CookingState {
   records: CookingRecord[];
   photos: CookingPhotos;
   loaded: boolean;
+  photosLoading: boolean;
   loadFromFirebase: () => void;
+  loadPhotos: () => void;
   subscribeToFirebase: () => () => void;
   addRecord: (record: Omit<CookingRecord, 'id' | 'createdBy' | 'createdAt' | 'photoCount'> & { photos: string[] }) => void;
 }
@@ -32,7 +34,9 @@ export const useCookingStore = create<CookingState>((set, get) => ({
   records: [],
   photos: {},
   loaded: false,
+  photosLoading: false,
 
+  // Only load text data, no photos
   loadFromFirebase: async () => {
     const roomId = getRoomId();
     if (!roomId) return;
@@ -72,9 +76,21 @@ export const useCookingStore = create<CookingState>((set, get) => ({
       return;
     }
 
-    // New format - records without inline photos
+    // New format - records without inline photos, don't load photos here
     set({ records: data, loaded: true });
-    // Load photos
+  },
+
+  // Load photos separately when page is visited
+  loadPhotos: async () => {
+    const state = get();
+    if (state.photosLoading) return;
+    // Skip if already loaded
+    if (Object.keys(state.photos).length > 0 && state.records.every(r => r.photoCount === 0 || state.photos[r.id])) return;
+    set({ photosLoading: true });
+
+    const roomId = getRoomId();
+    if (!roomId) { set({ photosLoading: false }); return; }
+
     const photoData = await supabaseGet<CookingPhotos>(roomId, 'cookingPhotos');
     if (photoData) {
       const updated = { ...photoData };
@@ -86,10 +102,12 @@ export const useCookingStore = create<CookingState>((set, get) => ({
           needsSave = true;
         }
       }
-      set({ photos: updated });
+      set({ photos: updated, photosLoading: false });
       if (needsSave) {
         supabaseSet(roomId, 'cookingPhotos', updated);
       }
+    } else {
+      set({ photosLoading: false });
     }
   },
 

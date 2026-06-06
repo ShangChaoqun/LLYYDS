@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMenuStore, MenuItem } from '@/store/useMenuStore';
 import { compressImage } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
@@ -12,6 +12,11 @@ export default function Menu() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewerPhotos, setViewerPhotos] = useState<{ photos: string[]; index: number } | null>(null);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
+
+  // Load photos when page is visited
+  useEffect(() => {
+    useMenuStore.getState().loadPhotos();
+  }, []);
 
   const handleRefresh = async () => {
     await useMenuStore.getState().loadFromFirebase();

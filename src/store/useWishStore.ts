@@ -30,7 +30,9 @@ interface WishState {
   wishes: Wish[];
   photos: WishPhotos;
   loaded: boolean;
+  photosLoading: boolean;
   loadFromFirebase: () => void;
+  loadPhotos: () => void;
   subscribeToFirebase: () => () => void;
   addWish: (wish: Omit<Wish, 'id' | 'completed' | 'completedAt' | 'hasCompletedPhoto' | 'createdBy' | 'createdAt' | 'hasPhoto'> & { photo?: string }) => void;
   completeWish: (id: string, completedPhoto?: string) => void;
@@ -41,7 +43,9 @@ export const useWishStore = create<WishState>((set, get) => ({
   wishes: [],
   photos: {},
   loaded: false,
+  photosLoading: false,
 
+  // Only load text data, no photos
   loadFromFirebase: async () => {
     const roomId = getRoomId();
     if (!roomId) return;
@@ -95,9 +99,21 @@ export const useWishStore = create<WishState>((set, get) => ({
       return;
     }
 
-    // New format - wishes without inline photos
+    // New format - wishes without inline photos, don't load photos here
     set({ wishes: data, loaded: true });
-    // Load photos
+  },
+
+  // Load photos separately when page is visited
+  loadPhotos: async () => {
+    const state = get();
+    if (state.photosLoading) return;
+    // Skip if already loaded
+    if (Object.keys(state.photos).length > 0 && state.wishes.every(w => (!w.hasPhoto && !w.hasCompletedPhoto) || state.photos[w.id])) return;
+    set({ photosLoading: true });
+
+    const roomId = getRoomId();
+    if (!roomId) { set({ photosLoading: false }); return; }
+
     const photoData = await supabaseGet<WishPhotos>(roomId, 'wishPhotos');
     if (photoData) {
       const updated = { ...photoData };
@@ -113,10 +129,12 @@ export const useWishStore = create<WishState>((set, get) => ({
           needsSave = true;
         }
       }
-      set({ photos: updated });
+      set({ photos: updated, photosLoading: false });
       if (needsSave) {
         supabaseSet(roomId, 'wishPhotos', updated);
       }
+    } else {
+      set({ photosLoading: false });
     }
   },
 

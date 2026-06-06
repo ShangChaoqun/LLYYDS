@@ -23,7 +23,9 @@ interface MenuState {
   menuItems: MenuItem[];
   photos: MenuPhotos;
   loaded: boolean;
+  photosLoading: boolean;
   loadFromFirebase: () => void;
+  loadPhotos: () => void;
   subscribeToFirebase: () => () => void;
   addMenuItem: (item: { name: string; description: string; photo: string }) => void;
   updateMenuItem: (id: string, updates: Partial<Pick<MenuItem, 'description'>> & { photo?: string }) => void;
@@ -34,7 +36,9 @@ export const useMenuStore = create<MenuState>((set, get) => ({
   menuItems: [],
   photos: {},
   loaded: false,
+  photosLoading: false,
 
+  // Only load text data, no photos
   loadFromFirebase: async () => {
     const roomId = getRoomId();
     if (!roomId) return;
@@ -74,9 +78,21 @@ export const useMenuStore = create<MenuState>((set, get) => ({
       return;
     }
 
-    // New format - items without inline photos
+    // New format - items without inline photos, don't load photos here
     set({ menuItems: data, loaded: true });
-    // Load photos
+  },
+
+  // Load photos separately when page is visited
+  loadPhotos: async () => {
+    const state = get();
+    if (state.photosLoading) return;
+    // Skip if already loaded
+    if (Object.keys(state.photos).length > 0 && state.menuItems.every(i => !i.hasPhoto || state.photos[i.id])) return;
+    set({ photosLoading: true });
+
+    const roomId = getRoomId();
+    if (!roomId) { set({ photosLoading: false }); return; }
+
     const photoData = await supabaseGet<MenuPhotos>(roomId, 'menuPhotos');
     if (photoData) {
       const updated = { ...photoData };
@@ -87,10 +103,12 @@ export const useMenuStore = create<MenuState>((set, get) => ({
           needsSave = true;
         }
       }
-      set({ photos: updated });
+      set({ photos: updated, photosLoading: false });
       if (needsSave) {
         supabaseSet(roomId, 'menuPhotos', updated);
       }
+    } else {
+      set({ photosLoading: false });
     }
   },
 

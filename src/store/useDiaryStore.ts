@@ -25,6 +25,7 @@ interface DiaryState {
   entries: DiaryEntry[];
   photos: DiaryPhotos;
   loaded: boolean;
+  photosLoading: boolean;
   loadFromFirebase: () => void;
   loadPhotosProgressive: () => void;
   subscribeToFirebase: () => () => void;
@@ -37,7 +38,9 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   entries: [],
   photos: {},
   loaded: false,
+  photosLoading: false,
 
+  // Only load text data, no photos
   loadFromFirebase: async () => {
     const roomId = getRoomId();
     if (!roomId) return;
@@ -85,15 +88,18 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
       return;
     }
 
-    // New format - entries without inline photos
+    // New format - entries without inline photos, don't load photos here
     set({ entries: data, loaded: true });
-    // Load photos progressively in background
-    get().loadPhotosProgressive();
   },
 
+  // Load photos progressively, one entry at a time
   loadPhotosProgressive: async () => {
+    const state = get();
+    if (state.photosLoading) return;
+    set({ photosLoading: true });
+
     const roomId = getRoomId();
-    if (!roomId) return;
+    if (!roomId) { set({ photosLoading: false }); return; }
 
     const { entries } = get();
 
@@ -104,11 +110,11 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
       for (const entryId of Object.keys(oldPhotos)) {
         await supabaseSet(roomId, `diaryPhotos:${entryId}`, oldPhotos[entryId]);
       }
-      set({ photos: oldPhotos });
+      set({ photos: oldPhotos, photosLoading: false });
       return;
     }
 
-    // Load photos entry by entry
+    // Load photos entry by entry, updating state after each one
     for (const entry of entries) {
       if (entry.photoCount <= 0) continue;
       if (get().photos[entry.id]) continue;
@@ -121,11 +127,14 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
           );
           supabaseSet(roomId, `diaryPhotos:${entry.id}`, photoData);
         }
+        // Update state immediately so this entry's photos appear on screen
         set((state) => ({
           photos: { ...state.photos, [entry.id]: photoData },
         }));
       }
     }
+
+    set({ photosLoading: false });
   },
 
   subscribeToFirebase: () => {
@@ -159,7 +168,6 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     };
 
     const photoData: DiaryPhotoData = { photos: entry.photos, thumbnails };
-
     const entries = [newEntry, ...state.entries];
     const photos = { ...state.photos, [entryId]: photoData };
 

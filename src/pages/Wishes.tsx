@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWishStore, Wish } from '@/store/useWishStore';
 import { formatDate, formatDateTime, compressImage, getTodayStr } from '@/utils/helpers';
 import { genderToLabel } from '@/store/useRoomStore';
@@ -13,6 +13,11 @@ export default function Wishes() {
   const [completePhoto, setCompletePhoto] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
+  // Load photos when page is visited
+  useEffect(() => {
+    useWishStore.getState().loadPhotos();
+  }, []);
 
   const filtered = wishes
     .filter((w) => {
