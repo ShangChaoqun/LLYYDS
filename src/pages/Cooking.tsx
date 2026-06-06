@@ -8,7 +8,7 @@ import PullToRefresh from '@/components/PullToRefresh';
 import ImageViewer from '@/components/ImageViewer';
 
 export default function Cooking() {
-  const { records } = useCookingStore();
+  const { records, photos } = useCookingStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewPhotos, setViewPhotos] = useState<{ photos: string[]; index: number } | null>(null);
 
@@ -64,7 +64,8 @@ export default function Cooking() {
                     <CookingCard
                       key={record.id}
                       record={record}
-                      onViewPhoto={(photos, index) => setViewPhotos({ photos, index })}
+                      photoData={photos[record.id]}
+                      onViewPhoto={(photoList, index) => setViewPhotos({ photos: photoList, index })}
                     />
                   ))}
                 </div>
@@ -90,29 +91,40 @@ export default function Cooking() {
 
 function CookingCard({
   record,
+  photoData,
   onViewPhoto,
 }: {
   record: CookingRecord;
+  photoData?: { photos: string[]; thumbnails: string[] };
   onViewPhoto: (photos: string[], index: number) => void;
 }) {
+  const thumbnails = photoData?.thumbnails || [];
+  const fullPhotos = photoData?.photos || [];
+
   return (
     <div className="card-base animate-fade-in">
       <div className="flex gap-3">
-        {record.photos.length > 0 && (
+        {record.photoCount > 0 && (
           <div className="flex gap-1.5 flex-shrink-0">
-            {record.photos.slice(0, 3).map((photo, i) => (
-              <img
-                key={i}
-                src={photo}
-                alt=""
-                loading="lazy"
-                className="w-16 h-16 rounded-lg object-cover bg-gray-100"
-                onClick={(e) => { e.stopPropagation(); onViewPhoto(record.photos, i); }}
-              />
-            ))}
-            {record.photos.length > 3 && (
+            {thumbnails.length > 0 ? (
+              thumbnails.slice(0, 3).map((thumb, i) => (
+                <img
+                  key={i}
+                  src={thumb}
+                  alt=""
+                  loading="lazy"
+                  className="w-16 h-16 rounded-lg object-cover bg-gray-100"
+                  onClick={(e) => { e.stopPropagation(); onViewPhoto(fullPhotos, i); }}
+                />
+              ))
+            ) : (
+              Array.from({ length: Math.min(record.photoCount, 3) }).map((_, i) => (
+                <div key={i} className="w-16 h-16 rounded-lg bg-gray-100 animate-pulse" />
+              ))
+            )}
+            {record.photoCount > 3 && (
               <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                +{record.photos.length - 3}
+                +{record.photoCount - 3}
               </div>
             )}
           </div>

@@ -12,24 +12,25 @@ export interface DiaryEntry {
   updatedAt: number;
 }
 
+export interface DiaryPhotoData {
+  photos: string[];
+  thumbnails: string[];
+}
+
 export interface DiaryPhotos {
-  [entryId: string]: {
-    photos: string[];
-    thumbnails: string[];
-  };
+  [entryId: string]: DiaryPhotoData;
 }
 
 interface DiaryState {
   entries: DiaryEntry[];
   photos: DiaryPhotos;
   loaded: boolean;
-  photosLoaded: boolean;
   loadFromFirebase: () => void;
-  loadPhotos: () => void;
+  loadPhotosProgressive: () => void;
   subscribeToFirebase: () => () => void;
   addEntry: (entry: { content: string; photos: string[] }) => void;
   updateEntry: (id: string, updates: { content?: string; photos?: string[] }) => void;
-  getEntryPhotos: (entryId: string) => { photos: string[]; thumbnails: string[] };
+  getEntryPhotos: (entryId: string) => DiaryPhotoData;
 }
 
 // Migrate old data format (entries with photos/thumbnails inline) to new format
@@ -67,18 +68,32 @@ async function migrateOldData(roomId: string): Promise<{ entries: DiaryEntry[]; 
     }
   }
 
-  // Save migrated data
+  // Save migrated data - entries without photos, and each entry's photos separately
   await supabaseSet(roomId, 'diaryEntries', entries);
-  await supabaseSet(roomId, 'diaryPhotos', photos);
+  for (const entryId of Object.keys(photos)) {
+    await supabaseSet(roomId, `diaryPhotos:${entryId}`, photos[entryId]);
+  }
 
   return { entries, photos };
+}
+
+// Migrate old single-collection diaryPhotos to per-entry collections
+async function migrateOldPhotosCollection(roomId: string): Promise<DiaryPhotos | null> {
+  const oldPhotos = await supabaseGet<DiaryPhotos>(roomId, 'diaryPhotos');
+  if (!oldPhotos || Object.keys(oldPhotos).length === 0) return null;
+
+  // Save each entry's photos separately
+  for (const entryId of Object.keys(oldPhotos)) {
+    await supabaseSet(roomId, `diaryPhotos:${entryId}`, oldPhotos[entryId]);
+  }
+
+  return oldPhotos;
 }
 
 export const useDiaryStore = create<DiaryState>((set, get) => ({
   entries: [],
   photos: {},
   loaded: false,
-  photosLoaded: false,
 
   loadFromFirebase: async () => {
     const roomId = getRoomId();
@@ -97,40 +112,56 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
       // Old format - migrate
       const migrated = await migrateOldData(roomId);
       if (migrated) {
-        set({ entries: migrated.entries, photos: migrated.photos, loaded: true, photosLoaded: true });
+        set({ entries: migrated.entries, photos: migrated.photos, loaded: true });
         return;
       }
     }
 
     // New format - entries without photos
     set({ entries: data, loaded: true });
-    // Load photos in background
-    get().loadPhotos();
+    // Load photos progressively in background
+    get().loadPhotosProgressive();
   },
 
-  loadPhotos: async () => {
+  loadPhotosProgressive: async () => {
     const roomId = getRoomId();
     if (!roomId) return;
-    const data = await supabaseGet<DiaryPhotos>(roomId, 'diaryPhotos');
-    if (data) {
-      // Generate thumbnails for entries that don't have them
-      const updated = { ...data };
-      let needsSave = false;
-      for (const entryId of Object.keys(updated)) {
-        const entryPhotos = updated[entryId];
-        if (entryPhotos.photos.length > 0 && (!entryPhotos.thumbnails || entryPhotos.thumbnails.length === 0)) {
-          entryPhotos.thumbnails = await Promise.all(
-            entryPhotos.photos.map((photo) => generateThumbnail(photo))
+
+    const { entries } = get();
+
+    // First, try migrating old single-collection format
+    const oldPhotos = await migrateOldPhotosCollection(roomId);
+
+    // Load photos entry by entry, updating state after each one
+    for (const entry of entries) {
+      if (entry.photoCount <= 0) continue;
+
+      // Check if already loaded
+      if (get().photos[entry.id]) continue;
+
+      // Check if we got it from migration
+      if (oldPhotos && oldPhotos[entry.id]) {
+        set((state) => ({
+          photos: { ...state.photos, [entry.id]: oldPhotos[entry.id] },
+        }));
+        continue;
+      }
+
+      // Load this entry's photos individually
+      const photoData = await supabaseGet<DiaryPhotoData>(roomId, `diaryPhotos:${entry.id}`);
+      if (photoData) {
+        // Generate thumbnails if missing
+        if (photoData.photos.length > 0 && (!photoData.thumbnails || photoData.thumbnails.length === 0)) {
+          photoData.thumbnails = await Promise.all(
+            photoData.photos.map((photo) => generateThumbnail(photo))
           );
-          needsSave = true;
+          supabaseSet(roomId, `diaryPhotos:${entry.id}`, photoData);
         }
+        // Update state immediately so this entry's photos appear on screen
+        set((state) => ({
+          photos: { ...state.photos, [entry.id]: photoData },
+        }));
       }
-      set({ photos: updated, photosLoaded: true });
-      if (needsSave && roomId) {
-        supabaseSet(roomId, 'diaryPhotos', updated);
-      }
-    } else {
-      set({ photosLoaded: true });
     }
   },
 
@@ -140,12 +171,10 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     const unsub1 = supabaseOn(roomId, 'diaryEntries', (data) => {
       set({ entries: data || [], loaded: true });
     });
-    const unsub2 = supabaseOn(roomId, 'diaryPhotos', (data) => {
-      set({ photos: data || {}, photosLoaded: true });
-    });
+    // We don't subscribe to individual photo collections since they change infrequently
+    // Photos are loaded on demand
     return () => {
       unsub1();
-      unsub2();
     };
   },
 
@@ -168,17 +197,19 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
       updatedAt: now,
     };
 
+    const photoData: DiaryPhotoData = { photos: entry.photos, thumbnails };
+
     const entries = [newEntry, ...state.entries];
     const photos = {
       ...state.photos,
-      [entryId]: { photos: entry.photos, thumbnails },
+      [entryId]: photoData,
     };
 
     set({ entries, photos });
     const roomId = getRoomId();
     if (roomId) {
       supabaseSet(roomId, 'diaryEntries', entries);
-      supabaseSet(roomId, 'diaryPhotos', photos);
+      supabaseSet(roomId, `diaryPhotos:${entryId}`, photoData);
     }
   },
 
@@ -198,17 +229,21 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
       const thumbnails = await Promise.all(
         updates.photos.map((photo) => generateThumbnail(photo))
       );
+      const photoData: DiaryPhotoData = { photos: updates.photos, thumbnails };
       photos = {
         ...photos,
-        [id]: { photos: updates.photos, thumbnails },
+        [id]: photoData,
       };
+      const roomId = getRoomId();
+      if (roomId) {
+        supabaseSet(roomId, `diaryPhotos:${id}`, photoData);
+      }
     }
 
     set({ entries, photos });
     const roomId = getRoomId();
     if (roomId) {
       supabaseSet(roomId, 'diaryEntries', entries);
-      supabaseSet(roomId, 'diaryPhotos', photos);
     }
   },
 

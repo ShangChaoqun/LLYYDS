@@ -7,7 +7,7 @@ import PageHeader from '@/components/Layout/PageHeader';
 import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Wishes() {
-  const { wishes, completeWish, uncompleteWish } = useWishStore();
+  const { wishes, photos, completeWish, uncompleteWish } = useWishStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState<string | null>(null);
   const [completePhoto, setCompletePhoto] = useState('');
@@ -101,6 +101,7 @@ export default function Wishes() {
               <WishCard
                 key={wish.id}
                 wish={wish}
+                photoData={photos[wish.id]}
                 onComplete={() => setShowCompleteModal(wish.id)}
                 onUncomplete={() => uncompleteWish(wish.id)}
               />
@@ -150,10 +151,12 @@ export default function Wishes() {
 
 function WishCard({
   wish,
+  photoData,
   onComplete,
   onUncomplete,
 }: {
   wish: Wish;
+  photoData?: { photoThumbnail?: string; completedPhotoThumbnail?: string };
   onComplete: () => void;
   onUncomplete: () => void;
 }) {
@@ -199,13 +202,21 @@ function WishCard({
               <span className="text-xs text-primary">已完成 {formatDateTime(wish.completedAt)}</span>
             )}
           </div>
-          {(wish.photo || wish.completedPhoto) && (
+          {(wish.hasPhoto || wish.hasCompletedPhoto) && (
             <div className="flex gap-2 mt-2">
-              {wish.photo && !wish.completed && (
-                <img src={wish.photo} alt="" className="w-16 h-16 rounded-lg object-cover" />
+              {wish.hasPhoto && !wish.completed && (
+                photoData?.photoThumbnail ? (
+                  <img src={photoData.photoThumbnail} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-gray-100 animate-pulse" />
+                )
               )}
-              {wish.completedPhoto && wish.completed && (
-                <img src={wish.completedPhoto} alt="" className="w-16 h-16 rounded-lg object-cover" />
+              {wish.hasCompletedPhoto && wish.completed && (
+                photoData?.completedPhotoThumbnail ? (
+                  <img src={photoData.completedPhotoThumbnail} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-gray-100 animate-pulse" />
+                )
               )}
             </div>
           )}

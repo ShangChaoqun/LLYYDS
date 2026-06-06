@@ -8,7 +8,7 @@ import PullToRefresh from '@/components/PullToRefresh';
 import ImageViewer from '@/components/ImageViewer';
 
 export default function Diary() {
-  const { entries, photos, photosLoaded } = useDiaryStore();
+  const { entries, photos } = useDiaryStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editEntry, setEditEntry] = useState<DiaryEntry | null>(null);
   const [viewEntry, setViewEntry] = useState<DiaryEntry | null>(null);

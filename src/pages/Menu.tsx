@@ -8,7 +8,7 @@ import PullToRefresh from '@/components/PullToRefresh';
 import ImageViewer from '@/components/ImageViewer';
 
 export default function Menu() {
-  const { menuItems, updateMenuItem } = useMenuStore();
+  const { menuItems, photos, updateMenuItem } = useMenuStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewerPhotos, setViewerPhotos] = useState<{ photos: string[]; index: number } | null>(null);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
@@ -42,15 +42,19 @@ export default function Menu() {
           <div className="grid grid-cols-2 gap-3">
             {menuItems.map((item) => (
               <div key={item.id} className="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in">
-                {item.photo ? (
+                {item.hasPhoto ? (
                   <div className="relative aspect-[4/3]">
-                    <img
-                      src={item.photo}
-                      alt={item.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover cursor-pointer bg-gray-100"
-                      onClick={() => setViewerPhotos({ photos: [item.photo], index: 0 })}
-                    />
+                    {photos[item.id] ? (
+                      <img
+                        src={photos[item.id].thumbnail}
+                        alt={item.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover cursor-pointer bg-gray-100"
+                        onClick={() => setViewerPhotos({ photos: [photos[item.id].photo], index: 0 })}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 animate-pulse" />
+                    )}
                     <div className="absolute top-2 right-2">
                       <button
                         onClick={() => setEditItem(item)}
@@ -180,7 +184,8 @@ function AddMenuModal({ onClose }: { onClose: () => void }) {
 
 function EditMenuModal({ item, onClose }: { item: MenuItem; onClose: () => void }) {
   const [description, setDescription] = useState(item.description);
-  const [photo, setPhoto] = useState(item.photo);
+  const itemPhoto = useMenuStore((s) => s.photos[item.id]);
+  const [photo, setPhoto] = useState(itemPhoto?.photo || '');
   const updateMenuItem = useMenuStore((s) => s.updateMenuItem);
 
   const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
