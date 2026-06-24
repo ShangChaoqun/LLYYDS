@@ -8,10 +8,9 @@ import { compressImage } from '@/utils/helpers';
 import PullToRefresh from '@/components/PullToRefresh';
 
 const TOGETHER_SINCE = new Date('2021-05-28');
-const TOGETHER_UNTIL = new Date('2026-06-04');
 
 function getDaysTogether(): number {
-  const diff = TOGETHER_UNTIL.getTime() - TOGETHER_SINCE.getTime();
+  const diff = Date.now() - TOGETHER_SINCE.getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
@@ -160,7 +159,7 @@ export default function Home() {
             <span className="text-white/95 text-lg font-semibold">我们在一起 {daysTogether} 天</span>
           </div>
           <p className="text-white/50 text-xs mt-0.5">
-            2021.05.28 — 2026.06.04
+            2021.05.28 — 至今
           </p>
         </div>
       </div>

@@ -14,7 +14,6 @@ const PERSON_CONFIG: Record<Person, { name: string; emoji: string; color: string
 export default function Affinity() {
   const { scores, events, addEvent } = useAffinityStore();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [activePerson, setActivePerson] = useState<Person>('chaochao');
 
   const handleRefresh = async () => {
     await useAffinityStore.getState().loadFromFirebase();
@@ -55,13 +54,8 @@ export default function Affinity() {
             const config = PERSON_CONFIG[person];
             const score = scores[person];
             const scoreColor = getScoreColor(score);
-            const isActive = activePerson === person;
             return (
-              <button
-                key={person}
-                onClick={() => setActivePerson(person)}
-                className={`card-base text-center transition-all ${isActive ? 'ring-2 ring-primary/30 shadow-soft' : ''}`}
-              >
+              <div key={person} className="card-base text-center">
                 <div className="text-2xl mb-1">{config.emoji}</div>
                 <p className="text-xs text-gray-500 mb-2">{config.name}</p>
                 <div className="relative w-20 h-20 mx-auto mb-1">
@@ -75,27 +69,25 @@ export default function Affinity() {
                   </div>
                 </div>
                 <span className="text-[10px] text-gray-400">{getScoreLabel(score)}</span>
-              </button>
+              </div>
             );
           })}
         </div>
 
         <div className="flex items-center gap-2 mb-3">
           <Heart size={14} className="text-primary" />
-          <h3 className="text-sm font-semibold text-gray-600">
-            {PERSON_CONFIG[activePerson].name} 事件记录
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-600">事件记录</h3>
         </div>
 
-        {events.filter((e) => e.person === activePerson).length === 0 ? (
+        {events.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-300">
             <Heart size={36} className="mb-2" />
             <p className="text-xs">还没有事件记录</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {events
-              .filter((e) => e.person === activePerson)
+            {[...events]
+              .sort((a, b) => b.createdAt - a.createdAt)
               .map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}
@@ -110,6 +102,7 @@ export default function Affinity() {
 }
 
 function EventCard({ event }: { event: AffinityEvent }) {
+  const personConfig = PERSON_CONFIG[event.person];
   return (
     <div className="card-base animate-fade-in">
       <div className="flex items-center gap-3">
@@ -119,17 +112,20 @@ function EventCard({ event }: { event: AffinityEvent }) {
           {event.change > 0 ? <TrendingUp size={15} className="text-green-500" /> : <TrendingDown size={15} className="text-red-400" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <p className="text-sm text-gray-700">{event.description}</p>
+          <p className="text-sm text-gray-700">{event.description}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ color: personConfig.color, backgroundColor: personConfig.bgColor }}>
+              {personConfig.emoji}{personConfig.name}
+            </span>
             {event.createdBy && (
-              <span className="text-[10px] text-primary font-medium flex-shrink-0">
+              <span className="text-[10px] text-primary font-medium">
                 {event.createdBy === 'male' ? '🧑' : '👩'}{genderToLabel(event.createdBy)}
               </span>
             )}
+            <span className="text-[10px] text-gray-400">{formatDateTime(new Date(event.createdAt).toISOString())}</span>
           </div>
-          <span className="text-[10px] text-gray-400">{formatDateTime(new Date(event.createdAt).toISOString())}</span>
         </div>
-        <span className={`text-sm font-semibold ${event.change > 0 ? 'text-green-500' : 'text-red-400'}`}>
+        <span className={`text-sm font-semibold flex-shrink-0 ${event.change > 0 ? 'text-green-500' : 'text-red-400'}`}>
           {event.change > 0 ? '+' : ''}{event.change}
         </span>
       </div>
