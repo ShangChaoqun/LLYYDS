@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import TabBar from '@/components/Layout/TabBar';
 import Home from '@/pages/Home';
 import Wishes from '@/pages/Wishes';
@@ -79,6 +79,36 @@ CREATE POLICY "Public images"
   );
 }
 
+const LAST_ROUTE_KEY = 'llyyds_last_route';
+
+function RouteTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    if (location.pathname !== '/') {
+      localStorage.setItem(LAST_ROUTE_KEY, location.pathname);
+    }
+  }, [location.pathname]);
+  return null;
+}
+
+function RouteRestore() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const restoredRef = useRef(false);
+
+  useEffect(() => {
+    if (!restoredRef.current && location.pathname === '/') {
+      const saved = localStorage.getItem(LAST_ROUTE_KEY);
+      if (saved && saved !== '/') {
+        restoredRef.current = true;
+        navigate(saved, { replace: true });
+      }
+    }
+  }, [location.pathname, navigate]);
+
+  return null;
+}
+
 function AppContent() {
   const { gender } = useRoomStore();
   const unsubRef = useRef<(() => void)[]>([]);
@@ -115,6 +145,8 @@ function AppContent() {
 
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
+      <RouteTracker />
+      <RouteRestore />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/wishes" element={<Wishes />} />
