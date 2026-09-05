@@ -84,8 +84,9 @@ const LAST_ROUTE_KEY = 'llyyds_last_route';
 function RouteTracker() {
   const location = useLocation();
   useEffect(() => {
+    // 使用 sessionStorage：刷新时保留路由，关闭重开则回到首页
     if (location.pathname !== '/') {
-      localStorage.setItem(LAST_ROUTE_KEY, location.pathname);
+      sessionStorage.setItem(LAST_ROUTE_KEY, location.pathname);
     }
   }, [location.pathname]);
   return null;
@@ -98,7 +99,7 @@ function RouteRestore() {
 
   useEffect(() => {
     if (!restoredRef.current && location.pathname === '/') {
-      const saved = localStorage.getItem(LAST_ROUTE_KEY);
+      const saved = sessionStorage.getItem(LAST_ROUTE_KEY);
       if (saved && saved !== '/') {
         restoredRef.current = true;
         navigate(saved, { replace: true });
